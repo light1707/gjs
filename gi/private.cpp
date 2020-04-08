@@ -65,7 +65,7 @@ static bool gjs_override_property(JSContext* cx, unsigned argc, JS::Value* vp) {
         return false;
 
     GType gtype;
-    if (!gjs_gtype_get_actual_gtype(cx, type, &gtype))
+    if (!Type::get_actual_gtype(cx, type, &gtype))
         return false;
     if (gtype == G_TYPE_INVALID) {
         gjs_throw(cx, "Invalid parameter type was not a GType");
@@ -179,7 +179,7 @@ static bool get_interface_gtypes(JSContext* cx, JS::HandleObject interfaces,
 
         JS::RootedObject iface(cx, &iface_val.toObject());
         GType iface_type;
-        if (!gjs_gtype_get_actual_gtype(cx, iface, &iface_type))
+        if (!Type::get_actual_gtype(cx, iface, &iface_type))
             return false;
         if (iface_type == G_TYPE_INVALID) {
             gjs_throw(
@@ -354,9 +354,6 @@ static bool gjs_signal_new(JSContext* cx, unsigned argc, JS::Value* vp) {
                              &params_obj))
         return false;
 
-    if (!gjs_typecheck_gtype(cx, gtype_obj, true))
-        return false;
-
     /* we only support standard accumulators for now */
     GSignalAccumulator accumulator;
     switch (accumulator_enum) {
@@ -372,7 +369,7 @@ static bool gjs_signal_new(JSContext* cx, unsigned argc, JS::Value* vp) {
     }
 
     GType return_type;
-    if (!gjs_gtype_get_actual_gtype(cx, return_gtype_obj, &return_type))
+    if (!Type::get_actual_gtype(cx, return_gtype_obj, &return_type))
         return false;
 
     if (accumulator == g_signal_accumulator_true_handled &&
@@ -397,12 +394,12 @@ static bool gjs_signal_new(JSContext* cx, unsigned argc, JS::Value* vp) {
         }
 
         JS::RootedObject gjs_gtype(cx, &gtype_val.toObject());
-        if (!gjs_gtype_get_actual_gtype(cx, gjs_gtype, &params[ix]))
+        if (!Type::get_actual_gtype(cx, gjs_gtype, &params[ix]))
             return false;
     }
 
     GType gtype;
-    if (!gjs_gtype_get_actual_gtype(cx, gtype_obj, &gtype))
+    if (!Type::get_actual_gtype(cx, gtype_obj, &gtype))
         return false;
 
     unsigned signal_id = g_signal_newv(

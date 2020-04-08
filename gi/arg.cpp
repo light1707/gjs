@@ -983,7 +983,7 @@ gjs_gtypearray_to_array(JSContext   *context,
         }
 
         elem_obj = &elem.toObject();
-        if (!gjs_gtype_get_actual_gtype(context, elem_obj, &gtype))
+        if (!Type::get_actual_gtype(context, elem_obj, &gtype))
             return false;
         if (gtype == G_TYPE_INVALID) {
             gjs_throw(context, "Invalid element in GType array");
@@ -1647,7 +1647,7 @@ static bool value_to_interface_gi_argument(
         if (interface_type == GI_INFO_TYPE_STRUCT &&
             g_struct_info_is_gtype_struct(interface_info)) {
             GType actual_gtype;
-            if (!gjs_gtype_get_actual_gtype(cx, obj, &actual_gtype))
+            if (!Type::get_actual_gtype(cx, obj, &actual_gtype))
                 return false;
 
             if (actual_gtype == G_TYPE_NONE) {
@@ -1937,7 +1937,7 @@ gjs_value_to_g_argument(JSContext      *context,
         if (value.isObjectOrNull()) {
             GType gtype;
             JS::RootedObject obj(context, value.toObjectOrNull());
-            if (!gjs_gtype_get_actual_gtype(context, obj, &gtype)) {
+            if (!Type::get_actual_gtype(context, obj, &gtype)) {
                 wrong = true;
                 break;
             }
@@ -2950,7 +2950,7 @@ gjs_value_from_g_argument (JSContext             *context,
         if (gtype == 0)
             return true;  /* value_p is set to JS null */
 
-        JS::RootedObject obj(context, gjs_gtype_create_gtype_wrapper(context, gtype));
+        JS::RootedObject obj(context, Type::create(context, gtype));
         if (!obj)
             return false;
 

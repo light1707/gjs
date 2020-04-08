@@ -46,39 +46,29 @@
 #include "gjs/jsapi-class.h"
 #include "gjs/jsapi-util.h"
 
-GJS_USE static JSObject* gjs_gtype_get_proto(JSContext* cx) G_GNUC_UNUSED;
+// clang-format off
+const JSClass Type::klass = {
+    "GIRepositoryGType",
+    JSCLASS_HAS_PRIVATE | JSCLASS_FOREGROUND_FINALIZE,
+    &Type::class_ops
+};
+// clang-format on
+
+const js::ClassSpec Type::class_spec = {nullptr,  // createConstructor
+                                        nullptr,  // createPrototype
+                                        nullptr,  // constructorFunctions
+                                        nullptr,  // constructorProperties
+                                        Type::proto_funcs,
+                                        Type::proto_props,
+                                        nullptr,  // finishInit
+                                        js::ClassSpec::DontDefineConstructor};
+
 GJS_JSAPI_RETURN_CONVENTION
-static bool gjs_gtype_define_proto(JSContext *, JS::HandleObject,
-                                   JS::MutableHandleObject);
-
-GJS_DEFINE_PROTO_ABSTRACT("GIRepositoryGType", gtype,
-                          JSCLASS_FOREGROUND_FINALIZE);
-
-/* priv_from_js adds a "*", so this returns "void *" */
-GJS_DEFINE_PRIV_FROM_JS(void, gjs_gtype_class);
-
-static void gjs_gtype_finalize(JSFreeOp*, JSObject*) {
-    // No private data is allocated, it's stuffed directly in the private field
-    // of JSObject, so nothing to free
-}
-
-GJS_JSAPI_RETURN_CONVENTION
-static bool
-to_string_func(JSContext *cx,
-               unsigned   argc,
-               JS::Value *vp)
-{
-    GJS_GET_PRIV(cx, argc, vp, rec, obj, void, priv);
-    GType gtype = GPOINTER_TO_SIZE(priv);
-
-    if (gtype == 0) {
-        JS::RootedString str(cx,
-                             JS_AtomizeString(cx, "[object GType prototype]"));
-        if (!str)
-            return false;
-        rec.rval().setString(str);
-        return true;
-    }
+bool Type::to_string(JSContext* cx, unsigned argc, JS::Value* vp) {
+    GJS_GET_THIS(cx, argc, vp, rec, obj);
+    GType gtype = Type::value(cx, obj, rec);
+    if (gtype == 0)
+        return false;
 
     GjsAutoChar strval = g_strdup_printf("[object GType for '%s']",
                                          g_type_name(gtype));
@@ -86,40 +76,26 @@ to_string_func(JSContext *cx,
 }
 
 GJS_JSAPI_RETURN_CONVENTION
-static bool
-get_name_func (JSContext *context,
-               unsigned   argc,
-               JS::Value *vp)
-{
-    GJS_GET_PRIV(context, argc, vp, rec, obj, void, priv);
-    GType gtype;
+bool Type::get_name(JSContext* context, unsigned argc, JS::Value* vp) {
+    GJS_GET_THIS(context, argc, vp, rec, obj);
+    GType gtype = Type::value(context, obj, rec);
+    if (gtype == 0)
+        return false;
 
-    gtype = GPOINTER_TO_SIZE(priv);
-
-    if (gtype == 0) {
-        rec.rval().setNull();
-        return true;
-    }
     return gjs_string_from_utf8(context, g_type_name(gtype), rec.rval());
 }
 
 /* Properties */
-JSPropertySpec gjs_gtype_proto_props[] = {
-    JS_PSG("name", get_name_func, JSPROP_PERMANENT),
+const JSPropertySpec Type::proto_props[] = {
+    JS_PSG("name", &Type::get_name, JSPROP_PERMANENT),
     JS_PS_END,
 };
 
 /* Functions */
-JSFunctionSpec gjs_gtype_proto_funcs[] = {
-    JS_FN("toString", to_string_func, 0, 0),
-    JS_FS_END};
+const JSFunctionSpec Type::proto_funcs[] = {
+    JS_FN("toString", &Type::to_string, 0, 0), JS_FS_END};
 
-JSFunctionSpec gjs_gtype_static_funcs[] = { JS_FS_END };
-
-JSObject *
-gjs_gtype_create_gtype_wrapper (JSContext *context,
-                                GType      gtype)
-{
+JSObject* Type::create(JSContext* context, GType gtype) {
     g_assert(((void) "Attempted to create wrapper object for invalid GType",
               gtype != 0));
 
@@ -132,12 +108,12 @@ gjs_gtype_create_gtype_wrapper (JSContext *context,
     if (p.found())
         return p->value();
 
-    JS::RootedObject proto(context);
-    if (!gjs_gtype_define_proto(context, nullptr, &proto))
+    JS::RootedObject proto(context, Type::create_prototype(context));
+    if (!proto)
         return nullptr;
 
     JS::RootedObject gtype_wrapper(
-        context, JS_NewObjectWithGivenProto(context, &gjs_gtype_class, proto));
+        context, JS_NewObjectWithGivenProto(context, &Type::klass, proto));
     if (!gtype_wrapper)
         return nullptr;
 
@@ -148,13 +124,12 @@ gjs_gtype_create_gtype_wrapper (JSContext *context,
     return gtype_wrapper;
 }
 
-GJS_JSAPI_RETURN_CONVENTION
-static bool _gjs_gtype_get_actual_gtype(JSContext* context,
-                                        const GjsAtoms& atoms,
-                                        JS::HandleObject object,
-                                        GType* gtype_out, int recurse) {
-    if (JS_InstanceOf(context, object, &gjs_gtype_class, nullptr)) {
-        *gtype_out = GPOINTER_TO_SIZE(priv_from_js(context, object));
+bool Type::_get_actual_gtype(JSContext* context, const GjsAtoms& atoms,
+                             JS::HandleObject object, GType* gtype_out,
+                             int recurse) {
+    GType gtype = Type::value(context, object);
+    if (gtype > 0) {
+        *gtype_out = gtype;
         return true;
     }
 
@@ -174,16 +149,16 @@ static bool _gjs_gtype_get_actual_gtype(JSContext* context,
 
     if (recurse > 0 && gtype_val.isObject()) {
         JS::RootedObject gtype_obj(context, &gtype_val.toObject());
-        return _gjs_gtype_get_actual_gtype(context, atoms, gtype_obj,
-                                           gtype_out, recurse - 1);
+        return _get_actual_gtype(context, atoms, gtype_obj, gtype_out,
+                                 recurse - 1);
     }
 
     *gtype_out = G_TYPE_INVALID;
     return true;
 }
 
-bool gjs_gtype_get_actual_gtype(JSContext* context, JS::HandleObject object,
-                                GType* gtype_out) {
+bool Type::get_actual_gtype(JSContext* context, JS::HandleObject object,
+                            GType* gtype_out) {
     g_assert(gtype_out && "Missing return location");
 
     /* 2 means: recurse at most three times (including this
@@ -195,13 +170,5 @@ bool gjs_gtype_get_actual_gtype(JSContext* context, JS::HandleObject object,
      */
 
     const GjsAtoms& atoms = GjsContextPrivate::atoms(context);
-    return _gjs_gtype_get_actual_gtype(context, atoms, object, gtype_out, 2);
-}
-
-bool
-gjs_typecheck_gtype (JSContext             *context,
-                     JS::HandleObject       obj,
-                     bool                   throw_error)
-{
-    return do_base_typecheck(context, obj, throw_error);
+    return _get_actual_gtype(context, atoms, object, gtype_out, 2);
 }

@@ -28,22 +28,69 @@
 #include <config.h>
 
 #include <glib-object.h>
+#include <glib.h>  // for GPOINTER_TO_SIZE
 
+#include <js/PropertySpec.h>
+#include <js/RootingAPI.h>
 #include <js/TypeDecls.h>
 
+#include "gjs/jsapi-class.h"
 #include "gjs/macros.h"
 
-GJS_JSAPI_RETURN_CONVENTION
-JSObject * gjs_gtype_create_gtype_wrapper (JSContext *context,
-                                           GType      gtype);
+class GjsAtoms;
+namespace JS {
+class CallArgs;
+}
+namespace js {
+struct ClassSpec;
+}
+struct JSClass;
 
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_gtype_get_actual_gtype(JSContext* context, JS::HandleObject object,
-                                GType* gtype_out);
+// Unfortunately, named "Type" because "GType" is already taken
+class Type;
+using TypeBase = NativeObject<Type, void, GJS_GLOBAL_SLOT_PROTOTYPE_gtype>;
 
-GJS_USE
-bool        gjs_typecheck_gtype         (JSContext             *context,
-                                         JS::HandleObject       obj,
-                                         bool                   throw_error);
+class Type : public TypeBase {
+    friend TypeBase;
+
+    // No private data is allocated, it's stuffed directly in the private field
+    // of JSObject, so nothing to free
+    static void finalize_impl(JSFreeOp*, void*) {}
+
+    static const JSClass klass;
+    static const JSPropertySpec proto_props[];
+    static const JSFunctionSpec proto_funcs[];
+    static const js::ClassSpec class_spec;
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static GType value(JSContext* cx, JS::HandleObject obj,
+                       JS::CallArgs& args) {
+        return GPOINTER_TO_SIZE(Type::for_js(cx, obj, args));
+    }
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static GType value(JSContext* cx, JS::HandleObject obj) {
+        return GPOINTER_TO_SIZE(Type::for_js(cx, obj));
+    }
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static bool to_string(JSContext* cx, unsigned argc, JS::Value* vp);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static bool get_name(JSContext* cx, unsigned argc, JS::Value* vp);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static bool _get_actual_gtype(JSContext* cx, const GjsAtoms& atoms,
+                                  JS::HandleObject object, GType* gtype_out,
+                                  int recurse);
+
+ public:
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* create(JSContext* cx, GType gtype);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static bool get_actual_gtype(JSContext* cx, JS::HandleObject object,
+                                 GType* gtype_out);
+};
 
 #endif  // GI_GTYPE_H_

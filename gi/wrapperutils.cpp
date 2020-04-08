@@ -95,7 +95,7 @@ bool gjs_wrapper_throw_readonly_field(JSContext* cx, GType gtype,
 
 bool gjs_wrapper_define_gtype_prop(JSContext* cx, JS::HandleObject constructor,
                                    GType gtype) {
-    JS::RootedObject gtype_obj(cx, gjs_gtype_create_gtype_wrapper(cx, gtype));
+    JS::RootedObject gtype_obj(cx, Type::create(cx, gtype));
     if (!gtype_obj)
         return false;
 

@@ -355,7 +355,7 @@ static bool gjs_value_guess_g_type(JSContext* context, JS::Value value,
     }
     if (value.isObject()) {
         JS::RootedObject obj(context, &value.toObject());
-        return gjs_gtype_get_actual_gtype(context, obj, gtype_out);
+        return Type::get_actual_gtype(context, obj, gtype_out);
     }
 
     *gtype_out = G_TYPE_INVALID;
@@ -693,7 +693,7 @@ gjs_value_to_g_value_internal(JSContext      *context,
             return throw_expect_type(context, value, "GType object");
 
         JS::RootedObject obj(context, &value.toObject());
-        if (!gjs_gtype_get_actual_gtype(context, obj, &type))
+        if (!Type::get_actual_gtype(context, obj, &type))
             return false;
         g_value_set_gtype(gvalue, type);
     } else if (g_type_is_a(gtype, G_TYPE_POINTER)) {
