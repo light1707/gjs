@@ -29,6 +29,7 @@
 #endif
 
 #include <stdbool.h>    /* IWYU pragma: keep */
+#include <stdint.h>
 
 #ifndef _WIN32
 #    include <signal.h> /* for siginfo_t */
@@ -61,10 +62,21 @@ GJS_EXPORT GJS_USE bool gjs_context_eval_file(GjsContext* js_context,
                                               const char* filename,
                                               int* exit_status_p,
                                               GError** error);
+GJS_EXPORT GJS_USE bool gjs_context_eval_module_file(GjsContext* js_context,
+                                                     const char* filename,
+                                                     uint8_t* exit_status_p,
+                                                     GError** error);
 GJS_EXPORT GJS_USE bool gjs_context_eval(GjsContext* js_context,
                                          const char* script, gssize script_len,
                                          const char* filename,
                                          int* exit_status_p, GError** error);
+GJS_EXPORT GJS_USE bool gjs_context_register_module(
+    GjsContext* context, const char* name, const char* filename,
+    const char* module, size_t module_len, GError** error);
+GJS_EXPORT GJS_USE bool gjs_context_eval_module(GjsContext* context,
+                                                const char* name,
+                                                uint8_t* exit_code,
+                                                GError** error);
 GJS_EXPORT GJS_USE bool gjs_context_define_string_array(
     GjsContext* js_context, const char* array_name, gssize array_length,
     const char** array_values, GError** error);
