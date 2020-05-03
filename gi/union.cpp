@@ -111,8 +111,8 @@ static void* union_new(JSContext* context, JS::HandleObject this_obj,
         if ((flags & GI_FUNCTION_IS_CONSTRUCTOR) != 0 &&
             g_callable_info_get_n_args((GICallableInfo*) func_info) == 0) {
             GIArgument rval;
-            if (!gjs_invoke_constructor_from_c(context, func_info, this_obj,
-                                               args, &rval))
+            if (!Function::invoke_constructor_uncached(context, func_info,
+                                                       this_obj, args, &rval))
                 return nullptr;
 
             if (!rval.v_pointer) {

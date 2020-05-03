@@ -198,8 +198,8 @@ bool FundamentalInstance::invoke_constructor(JSContext* context,
         return false;
     }
 
-    return gjs_invoke_constructor_from_c(context, constructor_info, obj, args,
-                                         rvalue);
+    return Function::invoke_constructor_uncached(context, constructor_info, obj,
+                                                 args, rvalue);
 }
 
 // See GIWrapperBase::constructor().
