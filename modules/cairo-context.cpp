@@ -24,7 +24,6 @@
 
 #include <vector>
 
-#include <cairo-gobject.h>
 #include <cairo.h>
 #include <girepository.h>
 #include <glib.h>
@@ -47,12 +46,27 @@
 #include "gjs/macros.h"
 #include "modules/cairo-private.h"
 
-#define _GJS_CAIRO_CONTEXT_DEFINE_FUNC_BEGIN(mname)              \
-    GJS_JSAPI_RETURN_CONVENTION                                  \
-    static bool mname##_func(JSContext* context, unsigned argc,  \
-                             JS::Value* vp) {                    \
-        GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr); \
-        if (!cr)                                                 \
+const js::ClassSpec CairoContext::class_spec = {
+    nullptr,  // createConstructor
+    nullptr,  // createPrototype
+    nullptr,  // constructorFunctions
+    nullptr,  // constructorProperties
+    CairoContext::proto_funcs,
+    nullptr,  // prototypeProperties
+    CairoContext::define_gtype_prop,
+};
+
+const JSClass CairoContext::klass = {
+    "Context", JSCLASS_HAS_PRIVATE | JSCLASS_BACKGROUND_FINALIZE,
+    &CairoContext::class_ops};
+
+#define _GJS_CAIRO_CONTEXT_DEFINE_FUNC_BEGIN(mname)             \
+    GJS_JSAPI_RETURN_CONVENTION                                 \
+    static bool mname##_func(JSContext* context, unsigned argc, \
+                             JS::Value* vp) {                   \
+        GJS_GET_THIS(context, argc, vp, argv, obj);             \
+        cairo_t* cr = CairoContext::for_js(context, obj, argv); \
+        if (!cr)                                                \
             return true;
 
 #define _GJS_CAIRO_CONTEXT_DEFINE_FUNC_END                               \
@@ -244,59 +258,34 @@ _GJS_CAIRO_CONTEXT_DEFINE_FUNC_BEGIN(method)                               \
     argv.rval().setUndefined();                                            \
 _GJS_CAIRO_CONTEXT_DEFINE_FUNC_END
 
-GJS_USE
-static JSObject *gjs_cairo_context_get_proto(JSContext *);
-
-GJS_DEFINE_PROTO_WITH_GTYPE("Context", cairo_context,
-                            CAIRO_GOBJECT_TYPE_CONTEXT,
-                            JSCLASS_BACKGROUND_FINALIZE)
-GJS_DEFINE_PRIV_FROM_JS(cairo_t, gjs_cairo_context_class);
-
-static void _gjs_cairo_context_construct_internal(JSObject* obj, cairo_t* cr) {
-    g_assert(!JS_GetPrivate(obj));
-    JS_SetPrivate(obj, cairo_reference(cr));
-}
-
-GJS_NATIVE_CONSTRUCTOR_DECLARE(cairo_context)
-{
-    GJS_NATIVE_CONSTRUCTOR_VARIABLES(cairo_context)
+GJS_JSAPI_RETURN_CONVENTION
+cairo_t* CairoContext::constructor_impl(JSContext* context,
+                                        const JS::CallArgs& argv) {
     cairo_t *cr;
-
-    GJS_NATIVE_CONSTRUCTOR_PRELUDE(cairo_context);
 
     JS::RootedObject surface_wrapper(context);
     if (!gjs_parse_call_args(context, "Context", argv, "o",
                              "surface", &surface_wrapper))
-        return false;
+        return nullptr;
 
     cairo_surface_t* surface =
         gjs_cairo_surface_get_surface(context, surface_wrapper);
     if (!surface)
-        return false;
+        return nullptr;
 
     cr = cairo_create(surface);
 
     if (!gjs_cairo_check_status(context, cairo_status(cr), "context"))
-        return false;
+        return nullptr;
 
-    _gjs_cairo_context_construct_internal(object, cr);
+    return cr;
+}
+
+void CairoContext::finalize_impl(JSFreeOp*, cairo_t* cr) {
+    if (!cr)
+        return;
     cairo_destroy(cr);
-
-    GJS_NATIVE_CONSTRUCTOR_FINISH(cairo_context);
-
-    return true;
 }
-
-static void gjs_cairo_context_finalize(JSFreeOp*, JSObject* obj) {
-    using AutoCairoContext = GjsAutoPointer<cairo_t, cairo_t, cairo_destroy>;
-    AutoCairoContext cr = static_cast<cairo_t*>(JS_GetPrivate(obj));
-    JS_SetPrivate(obj, nullptr);
-}
-
-/* Properties */
-JSPropertySpec gjs_cairo_context_proto_props[] = {
-    JS_PS_END
-};
 
 /* Methods */
 
@@ -383,7 +372,8 @@ dispose_func(JSContext *context,
              unsigned   argc,
              JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, rec, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, rec, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, rec);
     if (!cr)
         return true;
 
@@ -400,7 +390,8 @@ appendPath_func(JSContext *context,
                 unsigned   argc,
                 JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -425,7 +416,8 @@ copyPath_func(JSContext *context,
               unsigned   argc,
               JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -445,7 +437,8 @@ copyPathFlat_func(JSContext *context,
                   unsigned   argc,
                   JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -465,7 +458,8 @@ mask_func(JSContext *context,
           unsigned   argc,
           JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -495,7 +489,8 @@ maskSurface_func(JSContext *context,
                  unsigned   argc,
                  JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -528,7 +523,8 @@ setDash_func(JSContext *context,
              unsigned   argc,
              JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -589,7 +585,8 @@ setSource_func(JSContext *context,
                unsigned   argc,
                JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -620,7 +617,8 @@ setSourceSurface_func(JSContext *context,
                       unsigned   argc,
                       JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -654,7 +652,8 @@ showText_func(JSContext *context,
               unsigned   argc,
               JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -680,7 +679,8 @@ selectFontFace_func(JSContext *context,
                     unsigned   argc,
                     JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, argv, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, argv, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, argv);
     if (!cr)
         return true;
 
@@ -709,7 +709,8 @@ popGroup_func(JSContext *context,
               unsigned   argc,
               JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, rec, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, rec, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, rec);
     if (!cr)
         return true;
 
@@ -742,7 +743,8 @@ getSource_func(JSContext *context,
                unsigned   argc,
                JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, rec, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, rec, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, rec);
     if (!cr)
         return true;
 
@@ -776,7 +778,8 @@ getTarget_func(JSContext *context,
                unsigned   argc,
                JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, rec, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, rec, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, rec);
     if (!cr)
         return true;
 
@@ -810,7 +813,8 @@ getGroupTarget_func(JSContext *context,
                     unsigned   argc,
                     JS::Value *vp)
 {
-    GJS_GET_PRIV(context, argc, vp, rec, obj, cairo_t, cr);
+    GJS_GET_THIS(context, argc, vp, rec, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj, rec);
     if (!cr)
         return true;
 
@@ -838,7 +842,8 @@ getGroupTarget_func(JSContext *context,
     return true;
 }
 
-JSFunctionSpec gjs_cairo_context_proto_funcs[] = {
+// clang-format off
+const JSFunctionSpec CairoContext::proto_funcs[] = {
     JS_FN("$dispose", dispose_func, 0, 0),
     JS_FN("appendPath", appendPath_func, 0, 0),
     JS_FN("arc", arc_func, 0, 0),
@@ -938,30 +943,7 @@ JSFunctionSpec gjs_cairo_context_proto_funcs[] = {
     JS_FN("userToDevice", userToDevice_func, 0, 0),
     JS_FN("userToDeviceDistance", userToDeviceDistance_func, 0, 0),
     JS_FS_END};
-
-JSFunctionSpec gjs_cairo_context_static_funcs[] = { JS_FS_END };
-
-JSObject *
-gjs_cairo_context_from_context(JSContext *context,
-                               cairo_t *cr)
-{
-    JS::RootedObject proto(context, gjs_cairo_context_get_proto(context));
-    JS::RootedObject object(context,
-        JS_NewObjectWithGivenProto(context, &gjs_cairo_context_class, proto));
-    if (!object)
-        return nullptr;
-
-    _gjs_cairo_context_construct_internal(object, cr);
-
-    return object;
-}
-
-cairo_t *
-gjs_cairo_context_get_context(JSContext       *context,
-                              JS::HandleObject object)
-{
-    return priv_from_js(context, object);
-}
+// clang-format on
 
 GJS_USE
 static bool
@@ -986,9 +968,7 @@ context_to_g_argument(JSContext      *context,
     }
 
     JS::RootedObject obj(context, &value.toObject());
-    cairo_t *cr;
-
-    cr = gjs_cairo_context_get_context(context, obj);
+    cairo_t* cr = CairoContext::for_js(context, obj);
     if (!cr)
         return false;
     if (transfer == GI_TRANSFER_EVERYTHING)
@@ -1004,9 +984,8 @@ context_from_g_argument(JSContext             *context,
                         JS::MutableHandleValue value_p,
                         GIArgument            *arg)
 {
-    JSObject *obj;
-
-    obj = gjs_cairo_context_from_context(context, (cairo_t*)arg->v_pointer);
+    JSObject* obj = CairoContext::from_c_ptr(
+        context, static_cast<cairo_t*>(arg->v_pointer));
     if (!obj) {
         gjs_throw(context, "Could not create Cairo context");
         return false;
