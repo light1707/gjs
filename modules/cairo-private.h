@@ -87,17 +87,25 @@ void gjs_cairo_context_init(void);
 void gjs_cairo_surface_init(void);
 
 /* path */
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_path_define_proto(JSContext              *cx,
-                                 JS::HandleObject        module,
-                                 JS::MutableHandleObject proto);
 
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_path_from_path               (JSContext       *context,
-                                                         cairo_path_t    *path);
-GJS_JSAPI_RETURN_CONVENTION
-cairo_path_t* gjs_cairo_path_get_path(JSContext* cx,
-                                      JS::HandleObject path_wrapper);
+class CairoPath;
+using CairoPathBase =
+    NativeObject<CairoPath, cairo_path_t, GJS_GLOBAL_SLOT_PROTOTYPE_cairo_path>;
+
+class CairoPath : public CairoPathBase {
+    friend CairoPathBase;
+
+    CairoPath() = delete;
+    CairoPath(CairoPath&) = delete;
+    CairoPath(CairoPath&&) = delete;
+
+    static cairo_path_t* copy_ptr(cairo_path_t* path) { return path; }
+
+    static void finalize_impl(JSFreeOp* fop, cairo_path_t* path);
+
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+};
 
 /* surface */
 GJS_USE
