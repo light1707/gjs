@@ -32,6 +32,7 @@
 
 #include <js/PropertySpec.h>
 #include <js/TypeDecls.h>
+#include <jspubtd.h>  // for JSProtoKey
 
 #include "gjs/jsapi-class.h"
 #include "gjs/macros.h"
@@ -164,71 +165,160 @@ JSObject *       gjs_cairo_svg_surface_from_surface     (JSContext       *contex
                                                          cairo_surface_t *surface);
 
 /* pattern */
-GJS_USE
-JSObject *gjs_cairo_pattern_get_proto(JSContext *cx);
 
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_pattern_define_proto(JSContext              *cx,
-                                    JS::HandleObject        module,
-                                    JS::MutableHandleObject proto);
+class CairoPattern;
+using CairoPatternBase = NativeObject<CairoPattern, cairo_pattern_t,
+                                      GJS_GLOBAL_SLOT_PROTOTYPE_cairo_pattern>;
 
-void gjs_cairo_pattern_construct(JSObject* object, cairo_pattern_t* pattern);
-void             gjs_cairo_pattern_finalize_pattern     (JSFreeOp        *fop,
-                                                         JSObject        *object);
+class CairoPattern : public CairoPatternBase {
+    friend CairoPatternBase;
+    friend class CairoGradient;  // "inherits" from CairoPattern
+    friend class CairoLinearGradient;
+    friend class CairoRadialGradient;
+    friend class CairoSurfacePattern;
+    friend class CairoSolidPattern;
+
+    CairoPattern() = delete;
+    CairoPattern(CairoPattern&) = delete;
+    CairoPattern(CairoPattern&&) = delete;
+
+    static const JSFunctionSpec proto_funcs[];
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+
+    static GType gtype() { return CAIRO_GOBJECT_TYPE_PATTERN; }
+
+    static cairo_pattern_t* copy_ptr(cairo_pattern_t* pattern) {
+        return cairo_pattern_reference(pattern);
+    }
+
+ protected:
+    static void finalize_impl(JSFreeOp* fop, cairo_pattern_t* pattern);
+
+ public:
+    static cairo_pattern_t* for_js(JSContext* cx,
+                                   JS::HandleObject pattern_wrapper);
+};
+
 GJS_JSAPI_RETURN_CONVENTION
 JSObject*        gjs_cairo_pattern_from_pattern         (JSContext       *context,
                                                          cairo_pattern_t *pattern);
-GJS_JSAPI_RETURN_CONVENTION
-cairo_pattern_t* gjs_cairo_pattern_get_pattern(
-    JSContext* cx, JS::HandleObject pattern_wrapper);
 
-/* gradient */
-GJS_USE
-JSObject *gjs_cairo_gradient_get_proto(JSContext *cx);
+class CairoGradient;
+using CairoGradientBase =
+    NativeObject<CairoGradient, cairo_pattern_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_gradient>;
 
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_gradient_define_proto(JSContext              *cx,
-                                     JS::HandleObject        module,
-                                     JS::MutableHandleObject proto);
+class CairoGradient : public CairoGradientBase {
+    friend CairoGradientBase;
+    friend class CairoLinearGradient;  // "inherits" from CairoGradient
+    friend class CairoRadialGradient;
 
-/* linear gradient */
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_linear_gradient_define_proto(JSContext              *cx,
-                                            JS::HandleObject        module,
-                                            JS::MutableHandleObject proto);
+    static const JSFunctionSpec proto_funcs[];
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
 
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_linear_gradient_from_pattern (JSContext       *context,
-                                                         cairo_pattern_t *pattern);
+    static void finalize_impl(JSFreeOp*, cairo_pattern_t*) {}
 
-/* radial gradient */
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_radial_gradient_define_proto(JSContext              *cx,
-                                            JS::HandleObject        module,
-                                            JS::MutableHandleObject proto);
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+};
 
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_radial_gradient_from_pattern (JSContext       *context,
-                                                         cairo_pattern_t *pattern);
+class CairoLinearGradient;
+using CairoLinearGradientBase =
+    NativeObject<CairoLinearGradient, cairo_pattern_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_linear_gradient>;
 
-/* surface pattern */
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_surface_pattern_define_proto(JSContext              *cx,
-                                            JS::HandleObject        module,
-                                            JS::MutableHandleObject proto);
+class CairoLinearGradient : public CairoLinearGradientBase {
+    friend CairoLinearGradientBase;
 
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_surface_pattern_from_pattern (JSContext       *context,
-                                                         cairo_pattern_t *pattern);
+    static const JSFunctionSpec proto_funcs[];
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
 
-/* solid pattern */
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_solid_pattern_define_proto(JSContext              *cx,
-                                          JS::HandleObject        module,
-                                          JS::MutableHandleObject proto);
+    static cairo_pattern_t* copy_ptr(cairo_pattern_t* pattern) {
+        return cairo_pattern_reference(pattern);
+    }
 
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_solid_pattern_from_pattern   (JSContext       *context,
-                                                         cairo_pattern_t *pattern);
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_pattern_t* constructor_impl(JSContext* cx, const JS::CallArgs& args);
+
+    static void finalize_impl(JSFreeOp*, cairo_pattern_t*) {}
+};
+
+class CairoRadialGradient;
+using CairoRadialGradientBase =
+    NativeObject<CairoRadialGradient, cairo_pattern_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_radial_gradient>;
+
+class CairoRadialGradient : public CairoRadialGradientBase {
+    friend CairoRadialGradientBase;
+
+    static const JSFunctionSpec proto_funcs[];
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+
+    static cairo_pattern_t* copy_ptr(cairo_pattern_t* pattern) {
+        return cairo_pattern_reference(pattern);
+    }
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_pattern_t* constructor_impl(JSContext* cx, const JS::CallArgs& args);
+
+    static void finalize_impl(JSFreeOp*, cairo_pattern_t*) {}
+};
+
+class CairoSurfacePattern;
+using CairoSurfacePatternBase =
+    NativeObject<CairoSurfacePattern, cairo_pattern_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_surface_pattern>;
+
+class CairoSurfacePattern : public CairoSurfacePatternBase {
+    friend CairoSurfacePatternBase;
+
+    static const JSFunctionSpec proto_funcs[];
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+
+    static cairo_pattern_t* copy_ptr(cairo_pattern_t* pattern) {
+        return cairo_pattern_reference(pattern);
+    }
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_pattern_t* constructor_impl(JSContext* cx, const JS::CallArgs& args);
+
+    static void finalize_impl(JSFreeOp*, cairo_pattern_t*) {}
+};
+
+class CairoSolidPattern;
+using CairoSolidPatternBase =
+    NativeObject<CairoSolidPattern, cairo_pattern_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_solid_pattern>;
+
+class CairoSolidPattern : public CairoSolidPatternBase {
+    friend CairoSolidPatternBase;
+
+    static const JSFunctionSpec static_funcs[];
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+
+    static cairo_pattern_t* copy_ptr(cairo_pattern_t* pattern) {
+        return cairo_pattern_reference(pattern);
+    }
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+
+    static void finalize_impl(JSFreeOp*, cairo_pattern_t*) {}
+};
 
 #endif  // MODULES_CAIRO_PRIVATE_H_

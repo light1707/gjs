@@ -31,6 +31,7 @@
 #include <js/RootingAPI.h>
 #include <js/TypeDecls.h>
 #include <jsapi.h>  // for JS_NewObjectWithGivenProto
+#include <jspubtd.h>  // for JSProtoKey
 
 #include "gjs/jsapi-class.h"
 #include "gjs/jsapi-util-args.h"
@@ -38,53 +39,45 @@
 #include "gjs/macros.h"
 #include "modules/cairo-private.h"
 
-GJS_USE
-static JSObject *gjs_cairo_surface_pattern_get_proto(JSContext *);
+JSObject* CairoSurfacePattern::new_proto(JSContext* cx, JSProtoKey) {
+    JS::RootedObject parent_proto(cx, CairoPattern::prototype(cx));
+    return JS_NewObjectWithGivenProto(cx, nullptr, parent_proto);
+}
 
-GJS_DEFINE_PROTO_WITH_PARENT("SurfacePattern", cairo_surface_pattern,
-                             cairo_pattern, JSCLASS_BACKGROUND_FINALIZE)
+const js::ClassSpec CairoSurfacePattern::class_spec = {
+    nullptr,  // createConstructor
+    &CairoSurfacePattern::new_proto,
+    nullptr,  // constructorFunctions
+    nullptr,  // constructorProperties
+    CairoSurfacePattern::proto_funcs,
+    nullptr,  // prototypeProperties
+    &CairoPattern::define_gtype_prop,
+};
 
-GJS_NATIVE_CONSTRUCTOR_DECLARE(cairo_surface_pattern)
-{
-    GJS_NATIVE_CONSTRUCTOR_VARIABLES(cairo_surface_pattern)
+const JSClass CairoSurfacePattern::klass = {
+    "SurfacePattern", JSCLASS_HAS_PRIVATE | JSCLASS_BACKGROUND_FINALIZE,
+    &CairoPattern::class_ops};
+
+cairo_pattern_t* CairoSurfacePattern::constructor_impl(
+    JSContext* context, const JS::CallArgs& argv) {
     cairo_pattern_t *pattern;
-
-    GJS_NATIVE_CONSTRUCTOR_PRELUDE(cairo_surface_pattern);
-
     JS::RootedObject surface_wrapper(context);
     if (!gjs_parse_call_args(context, "SurfacePattern", argv, "o",
                              "surface", &surface_wrapper))
-        return false;
+        return nullptr;
 
     cairo_surface_t* surface =
         gjs_cairo_surface_get_surface(context, surface_wrapper);
     if (!surface)
-        return false;
+        return nullptr;
 
     pattern = cairo_pattern_create_for_surface(surface);
 
     if (!gjs_cairo_check_status(context, cairo_pattern_status(pattern), "pattern"))
-        return false;
+        return nullptr;
 
-    gjs_cairo_pattern_construct(object, pattern);
-    cairo_pattern_destroy(pattern);
-
-    GJS_NATIVE_CONSTRUCTOR_FINISH(cairo_surface_pattern);
-
-    return true;
+    return pattern;
 }
-
-
-static void
-gjs_cairo_surface_pattern_finalize(JSFreeOp *fop,
-                                   JSObject *obj)
-{
-    gjs_cairo_pattern_finalize_pattern(fop, obj);
-}
-
-JSPropertySpec gjs_cairo_surface_pattern_proto_props[] = {
-    JS_PS_END
-};
 
 GJS_JSAPI_RETURN_CONVENTION
 static bool
@@ -99,7 +92,7 @@ setExtend_func(JSContext *context,
                              "extend", &extend))
         return false;
 
-    cairo_pattern_t* pattern = gjs_cairo_pattern_get_pattern(context, obj);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, obj);
     if (!pattern)
         return false;
 
@@ -126,7 +119,7 @@ getExtend_func(JSContext *context,
         return false;
     }
 
-    cairo_pattern_t* pattern = gjs_cairo_pattern_get_pattern(context, obj);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, obj);
     if (!pattern)
         return false;
 
@@ -153,7 +146,7 @@ setFilter_func(JSContext *context,
                              "filter", &filter))
         return false;
 
-    cairo_pattern_t* pattern = gjs_cairo_pattern_get_pattern(context, obj);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, obj);
     if (!pattern)
         return false;
 
@@ -180,7 +173,7 @@ getFilter_func(JSContext *context,
         return false;
     }
 
-    cairo_pattern_t* pattern = gjs_cairo_pattern_get_pattern(context, obj);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, obj);
     if (!pattern)
         return false;
 
@@ -194,36 +187,9 @@ getFilter_func(JSContext *context,
     return true;
 }
 
-JSFunctionSpec gjs_cairo_surface_pattern_proto_funcs[] = {
+const JSFunctionSpec CairoSurfacePattern::proto_funcs[] = {
     JS_FN("setExtend", setExtend_func, 0, 0),
     JS_FN("getExtend", getExtend_func, 0, 0),
     JS_FN("setFilter", setFilter_func, 0, 0),
     JS_FN("getFilter", getFilter_func, 0, 0),
     JS_FS_END};
-
-JSFunctionSpec gjs_cairo_surface_pattern_static_funcs[] = { JS_FS_END };
-
-JSObject *
-gjs_cairo_surface_pattern_from_pattern(JSContext       *context,
-                                       cairo_pattern_t *pattern)
-{
-    g_return_val_if_fail(context, nullptr);
-    g_return_val_if_fail(pattern, nullptr);
-    g_return_val_if_fail(
-        cairo_pattern_get_type(pattern) == CAIRO_PATTERN_TYPE_SURFACE, nullptr);
-
-    JS::RootedObject proto(context,
-                           gjs_cairo_surface_pattern_get_proto(context));
-    JS::RootedObject object(context,
-        JS_NewObjectWithGivenProto(context, &gjs_cairo_surface_pattern_class,
-                                   proto));
-    if (!object) {
-        gjs_throw(context, "failed to create surface pattern");
-        return nullptr;
-    }
-
-    gjs_cairo_pattern_construct(object, pattern);
-
-    return object;
-}
-

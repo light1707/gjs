@@ -29,6 +29,8 @@
 #include <js/PropertySpec.h>
 #include <js/RootingAPI.h>
 #include <js/TypeDecls.h>
+#include <jsapi.h>    // for JS_NewObjectWithGivenProto
+#include <jspubtd.h>  // for JSProtoKey
 
 #include "gjs/jsapi-class.h"
 #include "gjs/jsapi-util-args.h"
@@ -36,21 +38,24 @@
 #include "gjs/macros.h"
 #include "modules/cairo-private.h"
 
-GJS_DEFINE_PROTO_ABSTRACT_WITH_PARENT("Gradient", cairo_gradient,
-                                      cairo_pattern,
-                                      JSCLASS_BACKGROUND_FINALIZE)
-
-static void
-gjs_cairo_gradient_finalize(JSFreeOp *fop,
-                            JSObject *obj)
-{
-    gjs_cairo_pattern_finalize_pattern(fop, obj);
-}
-
-/* Properties */
-JSPropertySpec gjs_cairo_gradient_proto_props[] = {
-    JS_PS_END
+const js::ClassSpec CairoGradient::class_spec = {
+    nullptr,  // createConstructor
+    &CairoGradient::new_proto,
+    nullptr,  // constructorFunctions
+    nullptr,  // constructorProperties
+    CairoGradient::proto_funcs,
+    nullptr,  // prototypeProperties
+    &CairoPattern::define_gtype_prop,
 };
+
+const JSClass CairoGradient::klass = {
+    "Gradient", JSCLASS_HAS_PRIVATE | JSCLASS_BACKGROUND_FINALIZE,
+    &CairoPattern::class_ops};
+
+JSObject* CairoGradient::new_proto(JSContext* cx, JSProtoKey) {
+    JS::RootedObject parent_proto(cx, CairoPattern::prototype(cx));
+    return JS_NewObjectWithGivenProto(cx, nullptr, parent_proto);
+}
 
 /* Methods */
 
@@ -70,7 +75,7 @@ addColorStopRGB_func(JSContext *context,
                              "blue", &blue))
         return false;
 
-    cairo_pattern_t* pattern = gjs_cairo_pattern_get_pattern(context, obj);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, obj);
     if (!pattern)
         return false;
 
@@ -100,7 +105,7 @@ addColorStopRGBA_func(JSContext *context,
                              "alpha", &alpha))
         return false;
 
-    cairo_pattern_t* pattern = gjs_cairo_pattern_get_pattern(context, obj);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, obj);
     if (!pattern)
         return false;
 
@@ -113,11 +118,9 @@ addColorStopRGBA_func(JSContext *context,
     return true;
 }
 
-JSFunctionSpec gjs_cairo_gradient_proto_funcs[] = {
+const JSFunctionSpec CairoGradient::proto_funcs[] = {
     JS_FN("addColorStopRGB", addColorStopRGB_func, 0, 0),
     JS_FN("addColorStopRGBA", addColorStopRGBA_func, 0, 0),
     // getColorStopRGB
     // getColorStopRGBA
     JS_FS_END};
-
-JSFunctionSpec gjs_cairo_gradient_static_funcs[] = { JS_FS_END };

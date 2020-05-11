@@ -22,7 +22,6 @@
 
 #include <config.h>
 
-#include <cairo-gobject.h>
 #include <cairo.h>
 #include <glib.h>
 
@@ -38,21 +37,34 @@
 #include "gjs/macros.h"
 #include "modules/cairo-private.h"
 
-GJS_DEFINE_PROTO_ABSTRACT_WITH_GTYPE("Pattern", cairo_pattern,
-                                     CAIRO_GOBJECT_TYPE_PATTERN,
-                                     JSCLASS_BACKGROUND_FINALIZE)
-
-static void gjs_cairo_pattern_finalize(JSFreeOp*, JSObject* obj) {
-    using AutoPattern =
-        GjsAutoPointer<cairo_pattern_t, cairo_pattern_t, cairo_pattern_destroy>;
-    AutoPattern pattern = static_cast<cairo_pattern_t*>(JS_GetPrivate(obj));
-    JS_SetPrivate(obj, nullptr);
-}
-
-/* Properties */
-JSPropertySpec gjs_cairo_pattern_proto_props[] = {
-    JS_PS_END
+const js::ClassSpec CairoPattern::class_spec = {
+    nullptr,  // createConstructor
+    nullptr,  // createPrototype
+    nullptr,  // constructorFunctions
+    nullptr,  // constructorProperties
+    CairoPattern::proto_funcs,
+    nullptr,  // prototypeProperties
+    &CairoPattern::define_gtype_prop,
 };
+
+const JSClass CairoPattern::klass = {
+    "Pattern", JSCLASS_HAS_PRIVATE | JSCLASS_BACKGROUND_FINALIZE,
+    &CairoPattern::class_ops};
+
+/**
+ * CairoPattern::finalize:
+ * @fop: the free op
+ * @pattern: pointer to free
+ *
+ * Destroys the resources associated with a pattern wrapper.
+ *
+ * This is mainly used for subclasses. FIXME
+ */
+void CairoPattern::finalize_impl(JSFreeOp*, cairo_pattern_t* pattern) {
+    if (!pattern)
+        return;
+    cairo_pattern_destroy(pattern);
+}
 
 /* Methods */
 
@@ -70,7 +82,7 @@ getType_func(JSContext *context,
         return false;
     }
 
-    cairo_pattern_t* pattern = gjs_cairo_pattern_get_pattern(context, obj);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, obj);
     if (!pattern)
         return false;
 
@@ -83,53 +95,13 @@ getType_func(JSContext *context,
     return true;
 }
 
-JSFunctionSpec gjs_cairo_pattern_proto_funcs[] = {
+const JSFunctionSpec CairoPattern::proto_funcs[] = {
     // getMatrix
     JS_FN("getType", getType_func, 0, 0),
     // setMatrix
     JS_FS_END};
 
-JSFunctionSpec gjs_cairo_pattern_static_funcs[] = { JS_FS_END };
-
 /* Public API */
-
-/**
- * gjs_cairo_pattern_construct:
- * @object: object to construct
- * @pattern: cairo_pattern to attach to the object
- *
- * Constructs a pattern wrapper giving an empty JSObject and a
- * cairo pattern. A reference to @pattern will be taken.
- *
- * This is mainly used for subclasses where object is already created.
- */
-void gjs_cairo_pattern_construct(JSObject* object, cairo_pattern_t* pattern) {
-    g_return_if_fail(object);
-    g_return_if_fail(pattern);
-
-    g_assert(!JS_GetPrivate(object));
-    JS_SetPrivate(object, cairo_pattern_reference(pattern));
-}
-
-/**
- * gjs_cairo_pattern_finalize:
- * @fop: the free op
- * @object: object to finalize
- *
- * Destroys the resources associated with a pattern wrapper.
- *
- * This is mainly used for subclasses.
- */
-
-void
-gjs_cairo_pattern_finalize_pattern(JSFreeOp *fop,
-                                   JSObject *object)
-{
-    g_return_if_fail(fop);
-    g_return_if_fail(object);
-
-    gjs_cairo_pattern_finalize(fop, object);
-}
 
 /**
  * gjs_cairo_pattern_from_pattern:
@@ -149,13 +121,13 @@ gjs_cairo_pattern_from_pattern(JSContext       *context,
 
     switch (cairo_pattern_get_type(pattern)) {
         case CAIRO_PATTERN_TYPE_SOLID:
-            return gjs_cairo_solid_pattern_from_pattern(context, pattern);
+            return CairoSolidPattern::from_c_ptr(context, pattern);
         case CAIRO_PATTERN_TYPE_SURFACE:
-            return gjs_cairo_surface_pattern_from_pattern(context, pattern);
+            return CairoSurfacePattern::from_c_ptr(context, pattern);
         case CAIRO_PATTERN_TYPE_LINEAR:
-            return gjs_cairo_linear_gradient_from_pattern(context, pattern);
+            return CairoLinearGradient::from_c_ptr(context, pattern);
         case CAIRO_PATTERN_TYPE_RADIAL:
-            return gjs_cairo_radial_gradient_from_pattern(context, pattern);
+            return CairoRadialGradient::from_c_ptr(context, pattern);
         case CAIRO_PATTERN_TYPE_MESH:
         case CAIRO_PATTERN_TYPE_RASTER_SOURCE:
         default:
@@ -167,18 +139,18 @@ gjs_cairo_pattern_from_pattern(JSContext       *context,
 }
 
 /**
- * gjs_cairo_pattern_get_pattern:
+ * CairoPattern::for_js:
  * @cx: the context
  * @pattern_wrapper: pattern wrapper
  *
  * Returns: the pattern attached to the wrapper.
  */
-cairo_pattern_t* gjs_cairo_pattern_get_pattern(
-    JSContext* cx, JS::HandleObject pattern_wrapper) {
+cairo_pattern_t* CairoPattern::for_js(JSContext* cx,
+                                      JS::HandleObject pattern_wrapper) {
     g_return_val_if_fail(cx, nullptr);
     g_return_val_if_fail(pattern_wrapper, nullptr);
 
-    JS::RootedObject proto(cx, gjs_cairo_pattern_get_proto(cx));
+    JS::RootedObject proto(cx, CairoPattern::prototype(cx));
 
     bool is_pattern_subclass = false;
     if (!gjs_object_in_prototype_chain(cx, proto, pattern_wrapper,

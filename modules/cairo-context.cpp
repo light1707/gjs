@@ -469,8 +469,7 @@ mask_func(JSContext *context,
                              "pattern", &pattern_wrapper))
         return false;
 
-    cairo_pattern_t* pattern =
-        gjs_cairo_pattern_get_pattern(context, pattern_wrapper);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, pattern_wrapper);
     if (!pattern)
         return false;
 
@@ -596,8 +595,7 @@ setSource_func(JSContext *context,
                              "pattern", &pattern_wrapper))
         return false;
 
-    cairo_pattern_t* pattern =
-        gjs_cairo_pattern_get_pattern(context, pattern_wrapper);
+    cairo_pattern_t* pattern = CairoPattern::for_js(context, pattern_wrapper);
     if (!pattern)
         return false;
 
