@@ -108,69 +108,166 @@ class CairoPath : public CairoPathBase {
 };
 
 /* surface */
-GJS_USE
-JSObject *gjs_cairo_surface_get_proto(JSContext *cx);
 
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_surface_define_proto(JSContext              *cx,
-                                    JS::HandleObject        module,
-                                    JS::MutableHandleObject proto);
+class CairoSurface;
+using CairoSurfaceBase = NativeObject<CairoSurface, cairo_surface_t,
+                                      GJS_GLOBAL_SLOT_PROTOTYPE_cairo_surface>;
 
-void gjs_cairo_surface_construct(JSObject* object, cairo_surface_t* surface);
-void             gjs_cairo_surface_finalize_surface     (JSFreeOp        *fop,
-                                                         JSObject        *object);
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_surface_from_surface         (JSContext       *context,
-                                                         cairo_surface_t *surface);
-GJS_JSAPI_RETURN_CONVENTION
-cairo_surface_t* gjs_cairo_surface_get_surface(
-    JSContext* cx, JS::HandleObject surface_wrapper);
+class CairoSurface : public CairoSurfaceBase {
+    friend CairoSurfaceBase;
+    friend class CairoImageSurface;  // "inherits" from CairoSurface
+    friend class CairoPSSurface;
+    friend class CairoPDFSurface;
+    friend class CairoSVGSurface;
 
-/* image surface */
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_image_surface_define_proto(JSContext              *cx,
-                                          JS::HandleObject        module,
-                                          JS::MutableHandleObject proto);
+    CairoSurface() = delete;
+    CairoSurface(CairoSurface&) = delete;
+    CairoSurface(CairoSurface&&) = delete;
 
-void             gjs_cairo_image_surface_init           (JSContext       *context,
-                                                         JS::HandleObject proto);
+    static GType gtype() { return CAIRO_GOBJECT_TYPE_SURFACE; }
 
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_image_surface_from_surface   (JSContext       *context,
-                                                         cairo_surface_t *surface);
+    static void finalize_impl(JSFreeOp* fop, cairo_surface_t* surface);
 
-/* postscript surface */
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+    static const JSFunctionSpec proto_funcs[];
+
+    static cairo_surface_t* copy_ptr(cairo_surface_t* surface) {
+        return cairo_surface_reference(surface);
+    }
+
+ public:
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* from_c_ptr(JSContext* cx, cairo_surface_t* surface);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_surface_t* for_js(JSContext* cx,
+                                   JS::HandleObject surface_wrapper);
+};
+
+class CairoImageSurface;
+using CairoImageSurfaceBase =
+    NativeObject<CairoImageSurface, cairo_surface_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_image_surface>;
+
+class CairoImageSurface : public CairoImageSurfaceBase {
+    friend CairoImageSurfaceBase;
+
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+    static const JSFunctionSpec static_funcs[];
+    static const JSFunctionSpec proto_funcs[];
+
+    static cairo_surface_t* copy_ptr(cairo_surface_t* surface) {
+        return cairo_surface_reference(surface);
+    }
+
+    static void finalize_impl(JSFreeOp*, cairo_surface_t*) {}
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_surface_t* constructor_impl(JSContext* cx, const JS::CallArgs& args);
+};
+
 #ifdef CAIRO_HAS_PS_SURFACE
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_ps_surface_define_proto(JSContext              *cx,
-                                       JS::HandleObject        module,
-                                       JS::MutableHandleObject proto);
-#endif
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_ps_surface_from_surface       (JSContext       *context,
-                                                          cairo_surface_t *surface);
+class CairoPSSurface;
+using CairoPSSurfaceBase =
+    NativeObject<CairoPSSurface, cairo_surface_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_ps_surface>;
 
-/* pdf surface */
+class CairoPSSurface : public CairoPSSurfaceBase {
+    friend CairoPSSurfaceBase;
+
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+    static const JSFunctionSpec proto_funcs[];
+
+    static cairo_surface_t* copy_ptr(cairo_surface_t* surface) {
+        return cairo_surface_reference(surface);
+    }
+
+    static void finalize_impl(JSFreeOp*, cairo_surface_t*) {}
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_surface_t* constructor_impl(JSContext* cx, const JS::CallArgs& args);
+};
+#else
+class CairoPSSurface {
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* from_c_ptr(JSContext* cx, cairo_surface_t* surface);
+}
+#endif  // CAIRO_HAS_PS_SURFACE
+
 #ifdef CAIRO_HAS_PDF_SURFACE
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_pdf_surface_define_proto(JSContext              *cx,
-                                        JS::HandleObject        module,
-                                        JS::MutableHandleObject proto);
-#endif
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_pdf_surface_from_surface     (JSContext       *context,
-                                                         cairo_surface_t *surface);
+class CairoPDFSurface;
+using CairoPDFSurfaceBase =
+    NativeObject<CairoPDFSurface, cairo_surface_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_pdf_surface>;
 
-/* svg surface */
+class CairoPDFSurface : public CairoPDFSurfaceBase {
+    friend CairoPDFSurfaceBase;
+
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+    static const JSFunctionSpec proto_funcs[];
+
+    static cairo_surface_t* copy_ptr(cairo_surface_t* surface) {
+        return cairo_surface_reference(surface);
+    }
+
+    static void finalize_impl(JSFreeOp*, cairo_surface_t*) {}
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_surface_t* constructor_impl(JSContext* cx, const JS::CallArgs& args);
+};
+#else
+class CairoPDFSurface {
+ public:
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* from_c_ptr(JSContext* cx, cairo_surface_t* surface);
+}
+#endif  // CAIRO_HAS_PDF_SURFACE
+
 #ifdef CAIRO_HAS_SVG_SURFACE
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_svg_surface_define_proto(JSContext              *cx,
-                                        JS::HandleObject        module,
-                                        JS::MutableHandleObject proto);
-#endif
-GJS_JSAPI_RETURN_CONVENTION
-JSObject *       gjs_cairo_svg_surface_from_surface     (JSContext       *context,
-                                                         cairo_surface_t *surface);
+class CairoSVGSurface;
+using CairoSVGSurfaceBase =
+    NativeObject<CairoSVGSurface, cairo_surface_t,
+                 GJS_GLOBAL_SLOT_PROTOTYPE_cairo_svg_surface>;
+
+class CairoSVGSurface : public CairoSVGSurfaceBase {
+    friend CairoSVGSurfaceBase;
+
+    static const js::ClassSpec class_spec;
+    static const JSClass klass;
+    static const JSFunctionSpec proto_funcs[];
+
+    static cairo_surface_t* copy_ptr(cairo_surface_t* surface) {
+        return cairo_surface_reference(surface);
+    }
+
+    static void finalize_impl(JSFreeOp*, cairo_surface_t*) {}
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* new_proto(JSContext* cx, JSProtoKey);
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_surface_t* constructor_impl(JSContext* cx, const JS::CallArgs& args);
+};
+#else
+class CairoPSSurface {
+ public:
+    GJS_JSAPI_RETURN_CONVENTION
+    static JSObject* from_c_ptr(JSContext* cx, cairo_surface_t* surface);
+}
+#endif  // CAIRO_HAS_SVG_SURFACE
 
 /* pattern */
 

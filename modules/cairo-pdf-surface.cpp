@@ -34,94 +34,59 @@
 #    include <glib.h>
 
 #    include <js/Class.h>
-#    include <js/PropertySpec.h>
 #    include <js/RootingAPI.h>
 #    include <jsapi.h>  // for JS_NewObjectWithGivenProto
+#    include <jspubtd.h>  // for JSProtoKey
 
 #    include "gjs/jsapi-class.h"
 #    include "gjs/jsapi-util-args.h"
-#    include "gjs/macros.h"
 #    include "modules/cairo-private.h"
 
-GJS_USE
-static JSObject *gjs_cairo_pdf_surface_get_proto(JSContext *);
+namespace JS {
+class CallArgs;
+}
 
-GJS_DEFINE_PROTO_WITH_PARENT("PDFSurface", cairo_pdf_surface,
-                             cairo_surface, JSCLASS_BACKGROUND_FINALIZE)
+JSObject* CairoPDFSurface::new_proto(JSContext* cx, JSProtoKey) {
+    JS::RootedObject parent_proto(cx, CairoSurface::prototype(cx));
+    return JS_NewObjectWithGivenProto(cx, nullptr, parent_proto);
+}
 
-GJS_NATIVE_CONSTRUCTOR_DECLARE(cairo_pdf_surface)
-{
-    GJS_NATIVE_CONSTRUCTOR_VARIABLES(cairo_pdf_surface)
+const js::ClassSpec CairoPDFSurface::class_spec = {
+    nullptr,  // createConstructor,
+    &CairoPDFSurface::new_proto,
+    nullptr,  // constructorFunctions
+    nullptr,  // constructorProperties
+    nullptr,  // prototypeFunctions
+    nullptr,  // prototypeProperties
+    &CairoSurface::define_gtype_prop,
+};
+
+const JSClass CairoPDFSurface::klass = {
+    "PDFSurface", JSCLASS_HAS_PRIVATE | JSCLASS_BACKGROUND_FINALIZE,
+    &CairoSurface::class_ops};
+
+cairo_surface_t* CairoPDFSurface::constructor_impl(JSContext* context,
+                                                   const JS::CallArgs& argv) {
     GjsAutoChar filename;
     double width, height;
     cairo_surface_t *surface;
-
-    GJS_NATIVE_CONSTRUCTOR_PRELUDE(cairo_pdf_surface);
-
     if (!gjs_parse_call_args(context, "PDFSurface", argv, "Fff",
                              "filename", &filename,
                              "width", &width,
                              "height", &height))
-        return false;
+        return nullptr;
 
     surface = cairo_pdf_surface_create(filename, width, height);
 
     if (!gjs_cairo_check_status(context, cairo_surface_status(surface),
                                 "surface"))
-        return false;
-
-    gjs_cairo_surface_construct(object, surface);
-    cairo_surface_destroy(surface);
-
-    GJS_NATIVE_CONSTRUCTOR_FINISH(cairo_pdf_surface);
-
-    return true;
-}
-
-static void
-gjs_cairo_pdf_surface_finalize(JSFreeOp *fop,
-                               JSObject *obj)
-{
-    gjs_cairo_surface_finalize_surface(fop, obj);
-}
-
-JSPropertySpec gjs_cairo_pdf_surface_proto_props[] = {
-    JS_PS_END
-};
-
-JSFunctionSpec gjs_cairo_pdf_surface_proto_funcs[] = {
-    JS_FS_END
-};
-
-JSFunctionSpec gjs_cairo_pdf_surface_static_funcs[] = { JS_FS_END };
-
-JSObject *
-gjs_cairo_pdf_surface_from_surface(JSContext       *context,
-                                   cairo_surface_t *surface)
-{
-    g_return_val_if_fail(context, nullptr);
-    g_return_val_if_fail(surface, nullptr);
-    g_return_val_if_fail(
-        cairo_surface_get_type(surface) == CAIRO_SURFACE_TYPE_PDF, nullptr);
-
-    JS::RootedObject proto(context, gjs_cairo_pdf_surface_get_proto(context));
-    JS::RootedObject object(context,
-        JS_NewObjectWithGivenProto(context, &gjs_cairo_pdf_surface_class,
-                                   proto));
-    if (!object) {
-        gjs_throw(context, "failed to create pdf surface");
         return nullptr;
-    }
 
-    gjs_cairo_surface_construct(object, surface);
-
-    return object;
+    return surface;
 }
 #else
-JSObject *
-gjs_cairo_pdf_surface_from_surface(JSContext       *context,
-                                   cairo_surface_t *surface)
-{
+JSObject* CairoPDFSurface::from_c_ptr(JSContext* context,
+                                      cairo_surface_t* surface) {
     gjs_throw(context,
         "could not create PDF surface, recompile cairo and gjs with "
         "PDF support.");
