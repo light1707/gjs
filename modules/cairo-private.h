@@ -50,10 +50,33 @@ bool             gjs_cairo_check_status                 (JSContext       *contex
                                                          cairo_status_t   status,
                                                          const char      *name);
 
-GJS_JSAPI_RETURN_CONVENTION
-bool gjs_cairo_region_define_proto(JSContext              *cx,
-                                   JS::HandleObject        module,
-                                   JS::MutableHandleObject proto);
+class CairoRegion;
+using CairoRegionBase = NativeObject<CairoRegion, cairo_region_t,
+                                     GJS_GLOBAL_SLOT_PROTOTYPE_cairo_region>;
+
+class CairoRegion : public CairoRegionBase {
+    friend CairoRegionBase;
+
+    CairoRegion() = delete;
+    CairoRegion(CairoRegion&) = delete;
+    CairoRegion(CairoRegion&&) = delete;
+
+    static GType gtype() { return CAIRO_GOBJECT_TYPE_REGION; }
+
+    static cairo_region_t* copy_ptr(cairo_region_t* region) {
+        return cairo_region_reference(region);
+    }
+
+    GJS_JSAPI_RETURN_CONVENTION
+    static cairo_region_t* constructor_impl(JSContext* cx,
+                                            const JS::CallArgs& args);
+
+    static void finalize_impl(JSFreeOp* fop, cairo_region_t* cr);
+
+    static const JSClass klass;
+    static const js::ClassSpec class_spec;
+    static const JSFunctionSpec proto_funcs[];
+};
 
 void gjs_cairo_region_init(void);
 
