@@ -3,6 +3,7 @@
  * Copyright (c) 2008  litl, LLC
  * Copyright (c) 2009 Red Hat, Inc.
  * Copyright (c) 2017  Philip Chimento <philip.chimento@gmail.com>
+ * Copyright (c) 2020  Evan Welsh <contact@evanwelsh.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -44,15 +45,65 @@
 #include <js/TypeDecls.h>
 #include <js/Utility.h>  // for UniqueChars
 #include <jsapi.h>       // for AutoSaveExceptionState, ...
+#include <jsfriendapi.h>
+
+#include <codecvt>
+#include <locale>
+#include <string>  // for u16string
+
+#include "gi/ns.h"
+#include "gi/repo.h"
 
 #include "gjs/atoms.h"
 #include "gjs/context-private.h"
 #include "gjs/engine.h"
 #include "gjs/global.h"
+#include "gjs/jsapi-util-args.h"
 #include "gjs/jsapi-util.h"
+#include "gjs/module.h"
+#include "gjs/native.h"
 
 namespace mozilla {
 union Utf8Unit;
+}
+
+inline JSObject* global_create(JSContext* cx, const JSClass* clasp,
+                               JS::RealmCreationOptions options) {
+    options.setBigIntEnabled(true);
+
+    JS::RealmBehaviors behaviors;
+    JS::RealmOptions compartment_options(options, behaviors);
+
+    JS::RootedObject global(
+        cx, JS_NewGlobalObject(cx, clasp, nullptr, JS::FireOnNewGlobalHook,
+                               compartment_options));
+
+    if (!global)
+        return nullptr;
+
+    JSAutoRealm ac(cx, global);
+
+    if (!JS_InitReflectParse(cx, global) ||
+        !JS_DefineDebuggerObject(cx, global))
+        return nullptr;
+
+    return global;
+}
+
+inline JSObject* global_create_new(JSContext* cx, const JSClass* clasp) {
+    JS::RealmCreationOptions creation;
+    creation.setNewCompartmentAndZone();
+
+    return global_create(cx, clasp, creation);
+}
+
+inline JSObject* global_create_with_existing(JSContext* cx, JSObject* existing,
+                                             const JSClass* clasp) {
+    JS::RealmCreationOptions creation;
+    JS::RootedObject comp(cx, existing);
+    creation.setExistingCompartment(comp);
+
+    return global_create(cx, clasp, creation);
 }
 
 GJS_JSAPI_RETURN_CONVENTION
@@ -231,8 +282,11 @@ const JSClassOps defaultclassops = JS::DefaultGlobalClassOps;
 
 class GjsGlobal {
     static constexpr JSClass klass = {
+        // Keep this as "GjsGlobal" until Jasmine is upgraded to support
+        // globalThis
         "GjsGlobal",
-        JSCLASS_GLOBAL_FLAGS_WITH_SLOTS(GJS_GLOBAL_SLOT_LAST),
+        JSCLASS_HAS_PRIVATE | JSCLASS_GLOBAL_FLAGS_WITH_SLOTS(
+                                  static_cast<uint32_t>(GjsGlobalSlot::LAST)),
         &defaultclassops,
     };
 
@@ -245,22 +299,16 @@ class GjsGlobal {
 
  public:
     GJS_USE
-    static JSObject *
-    create(JSContext *cx)
-    {
-        JS::RealmOptions options;
-        options.creationOptions().setBigIntEnabled(true);
-        JS::RootedObject global(
-            cx, JS_NewGlobalObject(cx, &GjsGlobal::klass, nullptr,
-                                   JS::FireOnNewGlobalHook, options));
-        if (!global)
-            return nullptr;
+    static JSObject* create(JSContext* cx) {
+        auto global = global_create_new(cx, &klass);
 
-        JSAutoRealm ar(cx, global);
+        return global;
+    }
 
-        if (!JS_InitReflectParse(cx, global) ||
-            !JS_DefineDebuggerObject(cx, global))
-            return nullptr;
+    GJS_USE
+    static JSObject* create_with_compartment(JSContext* cx,
+                                             JSObject* cmp_global) {
+        auto global = global_create_with_existing(cx, cmp_global, &klass);
 
         return global;
     }
@@ -280,9 +328,10 @@ class GjsGlobal {
         // const_cast is allowed here if we never free the realm data
         JS::SetRealmPrivate(realm, const_cast<char*>(realm_name));
 
-        JS::Value v_importer = gjs_get_global_slot(cx, GJS_GLOBAL_SLOT_IMPORTS);
-        g_assert(((void) "importer should be defined before passing null "
-                  "importer to GjsGlobal::define_properties",
+        JS::Value v_importer =
+            gjs_get_global_slot(global, GjsGlobalSlot::IMPORTS);
+        g_assert(((void)"importer should be defined before passing null "
+                        "importer to GjsGlobal::define_properties",
                   v_importer.isObject()));
         JS::RootedObject root_importer(cx, &v_importer.toObject());
 
@@ -291,6 +340,53 @@ class GjsGlobal {
             !JS_DefinePropertyById(cx, global, atoms.imports(), root_importer,
                                    GJS_MODULE_PROP_FLAGS))
             return false;
+
+        if (bootstrap_script) {
+            if (!run_bootstrap(cx, bootstrap_script, global))
+                return false;
+        }
+
+        return true;
+    }
+};
+
+class GjsDebuggerGlobal {
+    static constexpr JSClass klass = {
+        "GjsDebuggerGlobal",
+        JSCLASS_GLOBAL_FLAGS_WITH_SLOTS(
+            static_cast<uint32_t>(GjsGlobalSlot::LAST)),
+        &defaultclassops,
+    };
+
+    static constexpr JSFunctionSpec static_funcs[] = {
+        JS_FN("logError", gjs_log_error, 2, GJS_MODULE_PROP_FLAGS),
+        JS_FN("print", gjs_print, 0, GJS_MODULE_PROP_FLAGS), JS_FS_END};
+
+ public:
+    GJS_USE
+    static JSObject* create(JSContext* cx) {
+        return global_create_new(cx, &klass);
+    }
+
+    GJS_USE
+    static JSObject* create_with_compartment(JSContext* cx,
+                                             JSObject* cmp_global) {
+        return global_create_with_existing(cx, cmp_global, &klass);
+    }
+
+    static bool define_properties(JSContext* cx, JS::HandleObject global,
+                                  const char* realm_name,
+                                  const char* bootstrap_script) {
+        const GjsAtoms& atoms = GjsContextPrivate::atoms(cx);
+        if (!JS_DefinePropertyById(cx, global, atoms.window(), global,
+                                   JSPROP_READONLY | JSPROP_PERMANENT) ||
+            !JS_DefineFunctions(cx, global, GjsDebuggerGlobal::static_funcs))
+            return false;
+
+        JS::Realm* realm = JS::GetObjectRealmOrNull(global);
+        g_assert(realm && "Global object must be associated with a realm");
+        // const_cast is allowed here if we never free the realm data
+        JS::SetRealmPrivate(realm, const_cast<char*>(realm_name));
 
         if (bootstrap_script) {
             if (!run_bootstrap(cx, bootstrap_script, global))
@@ -310,10 +406,50 @@ class GjsGlobal {
  * Returns: the created global object on success, nullptr otherwise, in which
  * case an exception is pending on @cx
  */
-JSObject *
-gjs_create_global_object(JSContext *cx)
-{
-    return GjsGlobal::create(cx);
+JSObject* gjs_create_global_object(JSContext* cx, GjsGlobalType global_type,
+                                   JSObject* current_global) {
+    if (current_global) {
+        switch (global_type) {
+            case GjsGlobalType::DEFAULT:
+                return GjsGlobal::create_with_compartment(cx, current_global);
+            case GjsGlobalType::DEBUGGER:
+                return GjsDebuggerGlobal::create_with_compartment(
+                    cx, current_global);
+            default:
+                return nullptr;
+        }
+    }
+
+    switch (global_type) {
+        case GjsGlobalType::DEFAULT:
+            return GjsGlobal::create(cx);
+        case GjsGlobalType::DEBUGGER:
+            return GjsDebuggerGlobal::create(cx);
+        default:
+            return nullptr;
+    }
+}
+
+GjsGlobalType gjs_global_get_type(JSContext* cx) {
+    auto global = JS::CurrentGlobalOrNull(cx);
+
+    g_assert(global && "gjs_global_get_type called when no global is present");
+
+    auto global_type = gjs_get_global_slot(global, GjsGlobalSlot::GLOBAL_TYPE);
+
+    g_assert(global_type.isInt32() &&
+             "Invalid type for GLOBAL_TYPE slot. Expected int32.");
+
+    return static_cast<GjsGlobalType>(global_type.toInt32());
+}
+
+GjsGlobalType gjs_global_get_type(JSObject* global) {
+    auto global_type = gjs_get_global_slot(global, GjsGlobalSlot::GLOBAL_TYPE);
+
+    g_assert(global_type.isInt32() &&
+             "Invalid type for GLOBAL_TYPE slot. Expected int32.");
+
+    return static_cast<GjsGlobalType>(global_type.toInt32());
 }
 
 /**
@@ -343,28 +479,42 @@ gjs_create_global_object(JSContext *cx)
  * pending on @cx
  */
 bool gjs_define_global_properties(JSContext* cx, JS::HandleObject global,
+                                  GjsGlobalType global_type,
                                   const char* realm_name,
                                   const char* bootstrap_script) {
-    return GjsGlobal::define_properties(cx, global, realm_name,
-                                        bootstrap_script);
+    gjs_set_global_slot(global.get(), GjsGlobalSlot::GLOBAL_TYPE,
+                        JS::Int32Value(static_cast<uint32_t>(global_type)));
+
+    switch (global_type) {
+        case GjsGlobalType::DEFAULT:
+            return GjsGlobal::define_properties(cx, global, realm_name,
+                                                bootstrap_script);
+        case GjsGlobalType::DEBUGGER:
+            return GjsDebuggerGlobal::define_properties(cx, global, realm_name,
+                                                        bootstrap_script);
+    }
+
+    return false;
 }
 
-void
-gjs_set_global_slot(JSContext    *cx,
-                    GjsGlobalSlot slot,
-                    JS::Value     value)
-{
-    JSObject *global = gjs_get_import_global(cx);
-    JS_SetReservedSlot(global, JSCLASS_GLOBAL_SLOT_COUNT + slot, value);
+template <typename GlobalSlot>
+void gjs_set_global_slot(JSObject* global, GlobalSlot slot, JS::Value value) {
+    JS_SetReservedSlot(
+        global, JSCLASS_GLOBAL_SLOT_COUNT + static_cast<uint32_t>(slot), value);
 }
+template void gjs_set_global_slot(JSObject* global, GjsGlobalSlot slot,
+                                  JS::Value value);
 
-JS::Value
-gjs_get_global_slot(JSContext    *cx,
-                    GjsGlobalSlot slot)
-{
-    JSObject *global = gjs_get_import_global(cx);
-    return JS_GetReservedSlot(global, JSCLASS_GLOBAL_SLOT_COUNT + slot);
+template <typename GlobalSlot>
+JS::Value gjs_get_global_slot(JSObject* global, GlobalSlot slot) {
+    return JS_GetReservedSlot(
+        global, JSCLASS_GLOBAL_SLOT_COUNT + static_cast<uint32_t>(slot));
 }
+template JS::Value gjs_get_global_slot(JSObject* global, GjsGlobalSlot slot);
 
 decltype(GjsGlobal::klass) constexpr GjsGlobal::klass;
 decltype(GjsGlobal::static_funcs) constexpr GjsGlobal::static_funcs;
+
+decltype(GjsDebuggerGlobal::klass) constexpr GjsDebuggerGlobal::klass;
+decltype(
+    GjsDebuggerGlobal::static_funcs) constexpr GjsDebuggerGlobal::static_funcs;
