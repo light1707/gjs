@@ -29,8 +29,10 @@
 #include <stdint.h>
 #include <sys/types.h>  // for ssize_t
 
+#include <string>
 #include <type_traits>  // for is_same
 #include <unordered_map>
+#include <vector>
 
 #include <glib-object.h>
 #include <glib.h>
@@ -102,6 +104,8 @@ class GjsContextPrivate : public JS::JobQueue {
     unsigned m_auto_gc_id;
 
     GjsAtoms* m_atoms;
+
+    std::vector<std::string> m_args;
 
     JobQueueStorage m_job_queue;
     unsigned m_idle_drain_handler;
@@ -195,6 +199,10 @@ class GjsContextPrivate : public JS::JobQueue {
     void set_should_listen_sigusr2(bool value) {
         m_should_listen_sigusr2 = value;
     }
+
+    void set_args(std::vector<std::string> args);
+    std::vector<std::string> get_args();
+
     GJS_USE bool is_owner_thread(void) const {
         return m_owner_thread == g_thread_self();
     }
