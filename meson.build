@@ -380,6 +380,7 @@ libgjs_sources = [
     'gjs/error-types.cpp',
     'gjs/global.cpp', 'gjs/global.h',
     'gjs/importer.cpp', 'gjs/importer.h',
+    'gjs/internal.cpp', 'gjs/internal.h',
     'gjs/mem.cpp', 'gjs/mem-private.h',
     'gjs/module.cpp', 'gjs/module.h',
     'gjs/native.cpp', 'gjs/native.h',

@@ -58,6 +58,7 @@
 #include "gjs/jsapi-class.h"
 #include "gjs/jsapi-util.h"
 #include "gjs/mem-private.h"
+#include "gjs/module.h"
 #include "util/log.h"
 
 struct JSFunctionSpec;
@@ -150,8 +151,13 @@ static bool resolve_namespace_object(JSContext* context,
         return false;
 
     JS::RootedValue override(context);
-    if (!lookup_override_function(context, ns_id, &override))
-        return false;
+
+    // We do not load overrides on the internal global.
+    if (gjs_global_is_type(context, GjsGlobalType::DEFAULT)) {
+        if (!lookup_override_function(context, ns_id, &override)) {
+            return false;
+        }
+    }
 
     JS::RootedValue result(context);
     if (!override.isUndefined() &&
@@ -637,34 +643,87 @@ lookup_override_function(JSContext             *cx,
     }
     return true;
 
- fail:
+fail:
     saved_exc.drop();
     return false;
 }
 
-JSObject*
-gjs_lookup_namespace_object_by_name(JSContext      *context,
-                                    JS::HandleId    ns_name)
-{
-    auto global = gjs_get_import_global(context);
-    JS::RootedValue importer(
-        context, gjs_get_global_slot(global, GjsGlobalSlot::IMPORTS));
-    g_assert(importer.isObject());
-
-    JS::RootedObject repo(context), importer_obj(context, &importer.toObject());
-    const GjsAtoms& atoms = GjsContextPrivate::atoms(context);
-    if (!gjs_object_require_property(context, importer_obj, "importer",
-                                     atoms.gi(), &repo)) {
+GJS_JSAPI_RETURN_CONVENTION
+static JSObject* lookup_namespace(JSContext* context, JS::HandleId ns_name) {
+    auto native_registry = gjs_get_native_module_registry(context);
+    auto it = native_registry->lookup("gi");
+    if (!it.found()) {
         gjs_log_exception(context);
-        gjs_throw(context, "No gi property in importer");
+        gjs_throw(context, "No gi property in native registry");
         return NULL;
     }
 
+    JS::RootedObject gi(context, it->value());
     JS::RootedObject retval(context);
-    if (!gjs_object_require_property(context, repo, "GI repository object",
+    if (!gjs_object_require_property(context, gi, "GI repository object",
                                      ns_name, &retval))
         return NULL;
 
+    return retval;
+}
+
+GJS_JSAPI_RETURN_CONVENTION
+static JSObject* lookup_internal_namespace(JSContext* cx,
+                                           JS::HandleId ns_name) {
+    auto gcx = GjsContextPrivate::from_cx(cx);
+    JS::RootedObject global(cx, gcx->internal_global());
+    const GjsAtoms& atoms = GjsContextPrivate::atoms(cx);
+
+    // The internal global only supports GObject, Gio, GLib, and private
+    // namespaces.
+    if (ns_name == atoms.gobject() || ns_name == atoms.gio() ||
+        ns_name == atoms.glib() || ns_name == atoms.private_ns_marker()) {
+        JS::RootedObject retval(cx);
+
+        if (!gjs_object_require_property(
+                cx, global, "internal namespace import", ns_name, &retval))
+            return nullptr;
+
+        return retval;
+    } else if (JSID_IS_STRING(ns_name)) {
+        JS::RootedString str(cx, JSID_TO_STRING(ns_name));
+
+        JS::UniqueChars name(gjs_string_to_utf8(cx, JS::StringValue(str)));
+
+        gjs_throw(
+            cx,
+            "Attempted to load unknown GI namespace (%s) on internal global.",
+            name.get());
+    } else {
+        gjs_throw(cx,
+                  "Attempted to load invalid GI namespace on internal global.");
+    }
+
+    return nullptr;
+}
+
+JSObject* gjs_lookup_namespace_object_by_name(JSContext* context,
+                                              JS::HandleId ns_name) {
+    JSObject* global = JS::CurrentGlobalOrNull(context);
+    JSObject* ns = nullptr;
+
+    switch (gjs_global_get_type(global)) {
+        case GjsGlobalType::DEFAULT:
+            ns = lookup_namespace(context, ns_name);
+            break;
+        case GjsGlobalType::INTERNAL:
+            ns = lookup_internal_namespace(context, ns_name);
+            break;
+        case GjsGlobalType::DEBUGGER:
+            ns = nullptr;
+            break;
+    }
+
+    if (!ns) {
+        return nullptr;
+    }
+
+    JS::RootedObject retval(context, ns);
     return retval;
 }
 

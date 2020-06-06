@@ -40,6 +40,45 @@ endforeach
 
 subdir('js')
 
+# esm script tests #
+
+esm_tests = [
+    'default-import',
+    'named-import',
+    'gi-import',
+    'system-import'
+]
+
+esm_test_driver = find_program(files('esm-test.sh'))
+if get_option('installed_tests')
+    install_data('esm-test.sh', install_dir: installed_tests_execdir)
+endif
+
+foreach test : esm_tests
+    test_file = files('esm' / '@0@.js'.format(test))
+
+    test('@0@ command'.format(test), esm_test_driver,
+        args: test_file, env: tests_environment, protocol: 'tap',
+        suite: 'ESM')
+
+    test_description_subst = {
+        'name': '@0@.js'.format(test),
+        'installed_tests_execdir': installed_tests_execdir,
+    }
+    test_description = configure_file(configuration: test_description_subst,
+        input: 'esm.test.in',
+        output: '@0@.test'.format(test),
+        install: get_option('installed_tests'),
+        install_dir: installed_tests_metadir)
+
+    if get_option('installed_tests')
+        install_data(test_file, install_dir: installed_tests_execdir / 'esm')
+        install_data('esm' / '@0@.js'.format(test),
+            'esm' / '@0@.js.output'.format(test),
+            install_dir: installed_tests_execdir / 'esm')
+    endif
+endforeach
+
 # Debugger script tests #
 
 debugger_tests = [

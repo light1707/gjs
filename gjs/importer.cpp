@@ -50,6 +50,7 @@
 #include <js/Utility.h>  // for UniqueChars
 #include <js/Value.h>
 #include <jsapi.h>    // for JS_DefinePropertyById, JS_DefineP...
+#include <jsfriendapi.h>
 #include <jspubtd.h>  // for JSProto_Error
 #include <mozilla/UniquePtr.h>
 #include <mozilla/Vector.h>
@@ -300,10 +301,24 @@ gjs_import_native_module(JSContext       *cx,
 {
     gjs_debug(GJS_DEBUG_IMPORTER, "Importing '%s'", parse_name);
 
+    auto native_registry = gjs_get_native_module_registry(cx);
+    auto it = native_registry->lookupForAdd(parse_name);
+
     JS::RootedObject module(cx);
+
+    if (it.found()) {
+        module.set(it->value().get());
+        return define_meta_properties(cx, module, nullptr, parse_name,
+                                      importer) &&
+               JS_DefineProperty(cx, importer, parse_name, module,
+                                 GJS_MODULE_PROP_FLAGS);
+    }
+
     return gjs_load_native_module(cx, parse_name, &module) &&
+           native_registry->put(parse_name, module) &&
            define_meta_properties(cx, module, nullptr, parse_name, importer) &&
-           JS_DefineProperty(cx, importer, parse_name, module, GJS_MODULE_PROP_FLAGS);
+           JS_DefineProperty(cx, importer, parse_name, module,
+                             GJS_MODULE_PROP_FLAGS);
 }
 
 GJS_JSAPI_RETURN_CONVENTION

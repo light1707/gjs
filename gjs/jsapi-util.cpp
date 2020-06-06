@@ -657,6 +657,10 @@ JSObject* gjs_get_import_global(JSContext* cx) {
     return GjsContextPrivate::from_cx(cx)->global();
 }
 
+JSObject* gjs_get_internal_global(JSContext* cx) {
+    return GjsContextPrivate::from_cx(cx)->internal_global();
+}
+
 #if defined(G_OS_WIN32) && (defined(_MSC_VER) && (_MSC_VER >= 1900))
 /* Unfortunately Visual Studio's C++ .lib somehow did not contain the right
  * codecvt stuff that we need to convert from utf8 to utf16 (char16_t), so we

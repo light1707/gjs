@@ -212,6 +212,9 @@ struct GCPolicy<GjsAutoParam> : public IgnoreGCPolicy<GjsAutoParam> {};
 GJS_USE
 JSObject*   gjs_get_import_global            (JSContext       *context);
 
+GJS_USE
+JSObject* gjs_get_internal_global(JSContext* context);
+
 void gjs_throw_constructor_error             (JSContext       *context);
 
 void gjs_throw_abstract_constructor_error(JSContext    *context,

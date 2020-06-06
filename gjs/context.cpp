@@ -82,9 +82,11 @@
 #include "gjs/error-types.h"
 #include "gjs/global.h"
 #include "gjs/importer.h"
+#include "gjs/internal.h"
 #include "gjs/jsapi-util-args.h"
 #include "gjs/jsapi-util.h"
 #include "gjs/mem.h"
+#include "gjs/module.h"
 #include "gjs/native.h"
 #include "gjs/profiler-private.h"
 #include "gjs/profiler.h"
@@ -333,6 +335,8 @@ gjs_context_class_init(GjsContextClass *klass)
 void GjsContextPrivate::trace(JSTracer* trc, void* data) {
     auto* gjs = static_cast<GjsContextPrivate*>(data);
     JS::TraceEdge<JSObject*>(trc, &gjs->m_global, "GJS global object");
+    JS::TraceEdge<JSObject*>(trc, &gjs->m_internal_global,
+                             "GJS internal global object");
     gjs->m_atoms->trace(trc);
     gjs->m_job_queue.trace(trc);
     gjs->m_object_init_list.trace(trc);
@@ -419,6 +423,7 @@ void GjsContextPrivate::dispose(void) {
         gjs_debug(GJS_DEBUG_CONTEXT, "Ending trace on global object");
         JS_RemoveExtraGCRootsTracer(m_cx, &GjsContextPrivate::trace, this);
         m_global = nullptr;
+        m_internal_global = nullptr;
 
         gjs_debug(GJS_DEBUG_CONTEXT, "Freeing allocated resources");
         delete m_fundamental_table;
@@ -504,23 +509,50 @@ GjsContextPrivate::GjsContextPrivate(JSContext* cx, GjsContext* public_context)
 
     m_atoms = new GjsAtoms();
 
-    JS::RootedObject global(
-        m_cx, gjs_create_global_object(cx, GjsGlobalType::DEFAULT));
+    JS::RootedObject internal_global(
+        m_cx, gjs_create_global_object(cx, GjsGlobalType::INTERNAL));
 
-    if (!global) {
+    if (!internal_global) {
         gjs_log_exception(m_cx);
-        g_error("Failed to initialize global object");
+        g_error("Failed to initialize internal global object");
     }
 
-    JSAutoRealm ar(m_cx, global);
+    JSAutoRealm ar(m_cx, internal_global);
 
-    m_global = global;
+    m_internal_global = internal_global;
     JS_AddExtraGCRootsTracer(m_cx, &GjsContextPrivate::trace, this);
 
     if (!m_atoms->init_atoms(m_cx)) {
         gjs_log_exception(m_cx);
         g_error("Failed to initialize global strings");
     }
+
+    if (!gjs_define_global_properties(m_cx, internal_global,
+                                      GjsGlobalType::INTERNAL,
+                                      "GJS internal global", "nullptr")) {
+        gjs_log_exception(m_cx);
+        g_warning("Failed to define properties on internal global object.");
+    }
+
+    JS::RootedObject global(
+        m_cx,
+        gjs_create_global_object(cx, GjsGlobalType::DEFAULT, internal_global));
+
+    if (!global) {
+        gjs_log_exception(m_cx);
+        g_error("Failed to initialize global object");
+    }
+
+    m_global = global;
+
+    // Load internal script *must* be called from the internal realm.
+    if (!gjs_load_internal_script(cx, "module")) {
+        gjs_log_exception(cx);
+        g_warning("Failed to load internal dynamic module hooks.");
+    }
+
+    auto realm = JS::EnterRealm(m_cx, global);
+
     std::vector<std::string> paths;
     if (m_search_path)
         paths = {m_search_path, m_search_path + g_strv_length(m_search_path)};
@@ -542,6 +574,8 @@ GjsContextPrivate::GjsContextPrivate(JSContext* cx, GjsContext* public_context)
         gjs_log_exception(m_cx);
         g_error("Failed to define properties on global object");
     }
+
+    JS::LeaveRealm(m_cx, realm);
 }
 
 void GjsContextPrivate::set_args(std::vector<std::string> args) {
@@ -1053,24 +1087,161 @@ bool GjsContextPrivate::eval(const char* script, ssize_t script_len,
 
 bool GjsContextPrivate::eval_module(const char* identifier,
                                     uint8_t* exit_status_p, GError** error) {
-    // TODO Implement eval_module
-    g_error(
-        "GjsContextPrivate::eval_module is not implemented. Exiting with "
-        "error.");
+    bool auto_profile = m_should_profile;
 
-    return false;
+    if (auto_profile &&
+        (_gjs_profiler_is_running(m_profiler) || m_should_listen_sigusr2))
+        auto_profile = false;
+
+    if (auto_profile)
+        gjs_profiler_start(m_profiler);
+
+    JSAutoRealm ac(m_cx, m_global);
+
+    auto it = gjs_get_esm_registry(m_cx)->lookup(identifier);
+
+    if (!it) {
+        g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
+                    "Cannot find module with identifier %s.", identifier);
+        return false;
+    }
+
+    bool ok = true;
+
+    JS::RootedObject obj(m_cx, it->value());
+
+    if (!JS::ModuleInstantiate(m_cx, obj)) {
+        gjs_log_exception(m_cx);
+        g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
+                    "Failed to instantiate module %s.", identifier);
+
+        return false;
+    }
+
+    if (!JS::ModuleEvaluate(m_cx, obj)) {
+        ok = false;
+    }
+
+    schedule_gc_if_needed();
+
+    if (JS_IsExceptionPending(m_cx)) {
+        gjs_log_exception(m_cx);
+        g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
+                    "Uncaught exception in %s.", identifier);
+        return false;
+    }
+
+    gjs_debug(GJS_DEBUG_CONTEXT, "Module evaluation succeeded for module %s.",
+              identifier);
+
+    /* The promise job queue should be drained even on error, to finish
+     * outstanding async tasks before the context is torn down. Drain after
+     * uncaught exceptions have been reported since draining runs callbacks.
+     */
+    {
+        JS::AutoSaveExceptionState saved_exc(m_cx);
+        ok = run_jobs_fallible() && ok;
+    }
+
+    if (auto_profile)
+        gjs_profiler_stop(m_profiler);
+
+    if (!ok) {
+        uint8_t code;
+
+        if (should_exit(&code)) {
+            *exit_status_p = code;
+            g_set_error(error, GJS_ERROR, GJS_ERROR_SYSTEM_EXIT,
+                        "Exit with code %d", code);
+            return false;
+        }
+
+        if (!JS_IsExceptionPending(m_cx)) {
+            g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
+                        "Module %s terminated with an uncatchable exception",
+                        identifier);
+        } else {
+            g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
+                        "Module %s threw an exception", identifier);
+        }
+
+        gjs_log_exception(m_cx);
+        /* No exit code from script, but we don't want to exit(0) */
+        *exit_status_p = 1;
+        return false;
+    }
+
+    if (exit_status_p) {
+        /* Assume success if no integer was returned */
+        *exit_status_p = 0;
+    }
+
+    return true;
 }
 
 bool GjsContextPrivate::register_module(const char* identifier,
                                         const char* filename,
-                                        const char* module, size_t module_len,
+                                        const char* script, ssize_t script_len,
                                         GError** error) {
-    // TODO Implement register_module
-    g_warning(
-        "GjsContextPrivate::register_module is not yet implemented. Printing "
-        "module text...");
-    g_warning("%s", module);
-    return true;
+    JSAutoRealm ac(m_cx, m_global);
+
+    // Module registration uses exceptions to report errors
+    // so we'll store the exception state, clear it, attempt to load the
+    // module, then restore the original exception state.
+    JS::AutoSaveExceptionState exp_state(m_cx);
+
+    auto module = new GjsESModule(identifier, filename);
+
+    auto esm_registry = gjs_get_esm_registry(m_cx);
+
+    auto it = esm_registry->lookupForAdd(filename);
+
+    if (it.found()) {
+        gjs_throw(m_cx, "Module '%s' already registered", filename);
+        return false;
+    }
+
+    JS::RootedObject module_record(m_cx,
+                                   module->compile(m_cx, script, script_len));
+
+    if (module_record && !esm_registry->add(it, identifier, module_record)) {
+        JS_ReportOutOfMemory(m_cx);
+        return false;
+    }
+
+    if (module_record) {
+        return true;
+    }
+
+    // Our message could come from memory owned by us or by the runtime.
+    const char* msg = nullptr;
+
+    JS::RootedValue exc(m_cx);
+    if (JS_GetPendingException(m_cx, &exc)) {
+        JS::RootedObject exc_obj(m_cx, &exc.toObject());
+        JSErrorReport* report = JS_ErrorFromException(m_cx, exc_obj);
+        if (report) {
+            msg = report->message().c_str();
+        } else {
+            JS::RootedString js_message(m_cx, JS::ToString(m_cx, exc));
+
+            if (js_message) {
+                JS::UniqueChars cstr(JS_EncodeStringToUTF8(m_cx, js_message));
+                msg = cstr.get();
+            }
+        }
+    }
+
+    g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
+                "Error registering module '%s': %s", identifier,
+                msg ? msg : "unknown");
+
+    // We've successfully handled the exception so we can clear it.
+    // This is necessary because AutoSaveExceptionState doesn't erase
+    // exceptions when it restores the previous exception state.
+    JS_ClearPendingException(m_cx);
+
+    return false;
 }
 
 bool

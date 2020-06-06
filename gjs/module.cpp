@@ -1,6 +1,7 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 /*
  * Copyright (c) 2017  Philip Chimento <philip.chimento@gmail.com>
+ * Copyright (c) 2020  Evan Welsh <contact@evanwelsh.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -26,15 +27,22 @@
 #include <stddef.h>     // for size_t
 #include <sys/types.h>  // for ssize_t
 
+#include <codecvt>  // for codecvt_utf8_utf16
+#include <locale>   // for wstring_convert
 #include <string>  // for u16string
+#include <vector>
 
 #include <gio/gio.h>
+#include <girepository.h>
+#include <glib-object.h>
 #include <glib.h>
 
 #include <js/Class.h>
 #include <js/CompilationAndEvaluation.h>
 #include <js/CompileOptions.h>
+#include <js/Conversions.h>
 #include <js/GCVector.h>  // for RootedVector
+#include <js/Promise.h>
 #include <js/PropertyDescriptor.h>
 #include <js/RootingAPI.h>
 #include <js/SourceText.h>
@@ -42,15 +50,21 @@
 #include <jsapi.h>  // for JS_DefinePropertyById, ...
 
 #include "gjs/context-private.h"
+#include "gjs/error-types.h"
+#include "gjs/global.h"
+#include "gjs/importer.h"
 #include "gjs/jsapi-util.h"
 #include "gjs/mem-private.h"
 #include "gjs/module.h"
+#include "gjs/native.h"
 #include "util/log.h"
+
+using AutoGFile = GjsAutoUnref<GFile>;
 
 class GjsScriptModule {
     char *m_name;
 
-    GjsScriptModule(const char* name) {
+    explicit GjsScriptModule(const char* name) {
         m_name = g_strdup(name);
         GJS_INC_COUNTER(module);
     }
@@ -240,6 +254,30 @@ class GjsScriptModule {
     }
 };
 
+JSObject* GjsESModule::compile(JSContext* m_cx, const char* mod_text,
+                               size_t mod_len) {
+    JS::CompileOptions options(m_cx);
+    options.setFileAndLine(m_uri.c_str(), 1).setSourceIsLazy(false);
+
+    std::u16string utf16_string(gjs_utf8_script_to_utf16(mod_text, mod_len));
+
+    JS::SourceText<char16_t> buf;
+    if (!buf.init(m_cx, utf16_string.c_str(), utf16_string.size(),
+                  JS::SourceOwnership::Borrowed))
+        return nullptr;
+
+    JS::RootedObject new_module(m_cx);
+
+    if (!JS::CompileModule(m_cx, options, buf, &new_module)) {
+        gjs_log_exception(m_cx);
+        return nullptr;
+    }
+
+    JS::SetModulePrivate(new_module, JS::PrivateValue(this));
+
+    return new_module;
+}
+
 /**
  * gjs_module_import:
  * @cx: the JS context
@@ -268,3 +306,114 @@ gjs_module_import(JSContext       *cx,
 
 decltype(GjsScriptModule::klass) constexpr GjsScriptModule::klass;
 decltype(GjsScriptModule::class_ops) constexpr GjsScriptModule::class_ops;
+
+GjsModuleRegistry* gjs_get_native_module_registry(JSContext* js_context) {
+    auto global = gjs_get_import_global(js_context);
+    auto native_registry =
+        gjs_get_global_slot(global, GjsGlobalSlot::NATIVE_MODULE_REGISTRY);
+
+    return static_cast<GjsModuleRegistry*>(native_registry.toPrivate());
+}
+
+GjsModuleRegistry* gjs_get_esm_registry(JSContext* js_context) {
+    auto global = gjs_get_import_global(js_context);
+    auto esm_registry =
+        gjs_get_global_slot(global, GjsGlobalSlot::ES_MODULE_REGISTRY);
+
+    return static_cast<GjsModuleRegistry*>(esm_registry.toPrivate());
+}
+
+GjsModuleRegistry* gjs_get_internal_script_registry(JSContext* js_context) {
+    auto global = gjs_get_internal_global(js_context);
+    auto script_registry =
+        gjs_get_global_slot(global, GjsInternalGlobalSlot::SCRIPT_REGISTRY);
+
+    return static_cast<GjsModuleRegistry*>(script_registry.toPrivate());
+}
+
+GjsModuleRegistry* gjs_get_internal_module_registry(JSContext* js_context) {
+    auto global = gjs_get_internal_global(js_context);
+    auto script_registry =
+        gjs_get_global_slot(global, GjsInternalGlobalSlot::MODULE_REGISTRY);
+
+    return static_cast<GjsModuleRegistry*>(script_registry.toPrivate());
+}
+
+static bool populate_module_meta(JSContext* m_cx,
+                                 JS::Handle<JS::Value> private_ref,
+                                 JS::Handle<JSObject*> meta_object_handle) {
+    JS::RootedObject meta_object(m_cx, meta_object_handle);
+    JS::RootedValue uri_val(m_cx, JS::UndefinedValue());
+    bool allow_require = true;
+
+    if (!private_ref.isUndefined()) {
+        GjsESModule* module =
+            static_cast<GjsESModule*>(private_ref.toPrivate());
+
+        auto uri = module->uri();
+
+        allow_require = module->isInternal();
+
+        JS::Rooted<JSString*> uri_str(m_cx,
+                                      JS_NewStringCopyZ(m_cx, uri.c_str()));
+
+        if (!uri_str) {
+            JS_ReportOutOfMemory(m_cx);
+            return false;
+        }
+
+        uri_val.setString(uri_str);
+    }
+
+    if (!JS_DefineProperty(m_cx, meta_object, "url", uri_val,
+                           JSPROP_ENUMERATE)) {
+        gjs_throw(m_cx, "Could not define import.meta.url");
+        return false;
+    }
+
+    if (allow_require) {
+        if (!JS_DefineFunction(m_cx, meta_object, "require", gjs_require_module,
+                               1, GJS_MODULE_PROP_FLAGS)) {
+            gjs_throw(m_cx, "Could not define require!");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+JSObject* gjs_module_resolve(JSContext* cx, JS::HandleValue importer,
+                             JS::HandleString specifier) {
+    g_assert(gjs_global_is_type(cx, GjsGlobalType::DEFAULT) &&
+             "gjs_module_resolve can only be called from on the default "
+             "global.");
+
+    GjsContextPrivate* gjs_cx = GjsContextPrivate::from_cx(cx);
+
+    JS::RootedObject global(cx, gjs_cx->internal_global());
+    JSAutoRealm ar(cx, global);
+
+    JS::RootedValue hookValue(
+        cx, gjs_get_global_slot(global, GjsInternalGlobalSlot::IMPORT_HOOK));
+
+    JS::AutoValueArray<3> args(cx);
+    args[0].set(importer);
+    args[1].setString(specifier);
+
+    JS::RootedValue result(cx);
+
+    if (!JS_CallFunctionValue(cx, nullptr, hookValue, args, &result)) {
+        gjs_log_exception(cx);
+        return nullptr;
+    }
+
+    JS::RootedObject module(cx, result.toObjectOrNull());
+
+    return module;
+}
+
+bool gjs_populate_module_meta(JSContext* m_cx,
+                              JS::Handle<JS::Value> private_ref,
+                              JS::Handle<JSObject*> meta_object) {
+    return populate_module_meta(m_cx, private_ref, meta_object);
+}

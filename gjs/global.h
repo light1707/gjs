@@ -66,7 +66,14 @@ enum class GjsGlobalSlot : uint32_t {
     LAST,
 };
 
-GjsGlobalType gjs_global_get_type(JSContext* cx);
+enum class GjsInternalGlobalSlot : uint32_t {
+    MODULE_REGISTRY = static_cast<uint32_t>(GjsGlobalSlot::LAST),
+    SCRIPT_REGISTRY,
+    IMPORT_HOOK,
+    LAST
+};
+
+bool gjs_global_is_type(JSContext* cx, GjsGlobalType type);
 GjsGlobalType gjs_global_get_type(JSObject* global);
 
 GJS_JSAPI_RETURN_CONVENTION

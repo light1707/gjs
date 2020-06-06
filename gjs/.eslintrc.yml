@@ -1,0 +1,22 @@
+---
+extends: ../.eslintrc.yml
+globals:
+  ARGV: off
+  Debugger: readonly
+  GIRepositoryGType: off
+  globalThis: readonly
+  imports: off
+  Intl: readonly
+  log: readonly
+  logError: readonly
+  print: readonly
+  printerr: readonly
+  GLib: readonly
+  Gio: readonly
+  ByteUtils: readonly
+  lookupModule: readonly
+  registerModule: readonly
+  lookupInternalModule: readonly
+  registerInternalModule: readonly
+  setModuleResolveHook: readonly
+  getModuleUri: readonly

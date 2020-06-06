@@ -95,6 +95,7 @@ class GjsContextPrivate : public JS::JobQueue {
     GjsContext* m_public_context;
     JSContext* m_cx;
     JS::Heap<JSObject*> m_global;
+    JS::Heap<JSObject*> m_internal_global;
     GThread* m_owner_thread;
 
     char* m_program_name;
@@ -187,6 +188,9 @@ class GjsContextPrivate : public JS::JobQueue {
     GJS_USE GjsContext* public_context(void) const { return m_public_context; }
     GJS_USE JSContext* context(void) const { return m_cx; }
     GJS_USE JSObject* global(void) const { return m_global.get(); }
+    GJS_USE JSObject* internal_global(void) const {
+        return m_internal_global.get();
+    }
     GJS_USE GjsProfiler* profiler(void) const { return m_profiler; }
     GJS_USE const GjsAtoms& atoms(void) const { return *m_atoms; }
     GJS_USE bool destroying(void) const { return m_destroying; }
@@ -259,7 +263,8 @@ class GjsContextPrivate : public JS::JobQueue {
     void unregister_unhandled_promise_rejection(uint64_t id);
 
     bool register_module(const char* identifier, const char* filename,
-                         const char* mod_text, size_t mod_len, GError** error);
+                         const char* module, ssize_t module_len,
+                         GError** error);
 
     void set_sweeping(bool value);
 
