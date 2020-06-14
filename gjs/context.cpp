@@ -546,9 +546,14 @@ GjsContextPrivate::GjsContextPrivate(JSContext* cx, GjsContext* public_context)
     m_global = global;
 
     // Load internal script *must* be called from the internal realm.
-    if (!gjs_load_internal_script(cx, "module")) {
+
+    // TODO(ewlsh): Consider moving internal imports into JavaScript
+
+    if (!gjs_load_internal_script(cx, "errorTypes") ||
+        !gjs_load_internal_script(cx, "module") ||
+        !gjs_load_internal_script(cx, "module/loaders/file")) {
         gjs_log_exception(cx);
-        g_warning("Failed to load internal dynamic module hooks.");
+        g_error("Failed to load internal module loaders.");
     }
 
     auto realm = JS::EnterRealm(m_cx, global);

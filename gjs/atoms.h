@@ -71,6 +71,7 @@
     macro(prototype, "prototype") \
     macro(search_path, "searchPath") \
     macro(signal_id, "signalId") \
+    macro(soup, "Soup") \
     macro(stack, "stack") \
     macro(to_string, "toString") \
     macro(value_of, "valueOf") \

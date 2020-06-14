@@ -677,7 +677,8 @@ static JSObject* lookup_internal_namespace(JSContext* cx,
     // The internal global only supports GObject, Gio, GLib, and private
     // namespaces.
     if (ns_name == atoms.gobject() || ns_name == atoms.gio() ||
-        ns_name == atoms.glib() || ns_name == atoms.private_ns_marker()) {
+        ns_name == atoms.glib() || ns_name == atoms.soup() ||
+        ns_name == atoms.private_ns_marker()) {
         JS::RootedObject retval(cx);
 
         if (!gjs_object_require_property(

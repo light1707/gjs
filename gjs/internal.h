@@ -60,7 +60,7 @@ bool LookupModule(JSContext* cx, unsigned argc, JS::Value* vp);
 // debug(msg: string)
 bool Debug(JSContext* cx, unsigned argc, JS::Value* vp);
 
-// getModuleUri(module): string
-bool GetModuleUri(JSContext* cx, unsigned argc, JS::Value* vp);
+// getModuleURI(module): string
+bool GetModuleURI(JSContext* cx, unsigned argc, JS::Value* vp);
 
 #endif  // GJS_INTERNAL_H_

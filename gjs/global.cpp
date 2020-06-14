@@ -448,7 +448,7 @@ class GjsDebuggerGlobal {
 
 class GjsInternalGlobal {
     static constexpr JSFunctionSpec static_funcs[] = {
-        JS_FN("getModuleUri", GetModuleUri, 1, 0),
+        JS_FN("getModuleURI", GetModuleURI, 1, 0),
         JS_FN("compileAndEvalModule", CompileAndEvalModule, 1, 0),
         JS_FN("debug", Debug, 1, 0),
         JS_FN("lookupInternalModule", LookupInternalModule, 1, 0),
@@ -505,6 +505,8 @@ class GjsInternalGlobal {
             !g_irepository_require(nullptr, "GLib", "2.0",
                                    GIRepositoryLoadFlags(0), &error) ||
             !g_irepository_require(nullptr, "Gio", "2.0",
+                                   GIRepositoryLoadFlags(0), &error) ||
+            !g_irepository_require(nullptr, "Soup", "2.4",
                                    GIRepositoryLoadFlags(0), &error)) {
             gjs_throw_gerror_message(cx, error);
             g_error_free(error);
@@ -514,6 +516,7 @@ class GjsInternalGlobal {
         JS::RootedObject gobject(cx, gjs_create_ns(cx, "GObject"));
         JS::RootedObject glib(cx, gjs_create_ns(cx, "GLib"));
         JS::RootedObject gio(cx, gjs_create_ns(cx, "Gio"));
+        JS::RootedObject soup(cx, gjs_create_ns(cx, "Soup"));
         JS::RootedObject privateNS(cx, JS_NewPlainObject(cx));
 
         if (!JS_DefinePropertyById(cx, global, atoms.private_ns_marker(),
@@ -523,6 +526,8 @@ class GjsInternalGlobal {
             !JS_DefinePropertyById(cx, global, atoms.glib(), glib,
                                    JSPROP_PERMANENT) ||
             !JS_DefinePropertyById(cx, global, atoms.gio(), gio,
+                                   JSPROP_PERMANENT) ||
+            !JS_DefinePropertyById(cx, global, atoms.soup(), soup,
                                    JSPROP_PERMANENT)) {
             return false;
         }

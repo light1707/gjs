@@ -62,8 +62,8 @@
 using AutoGFile = GjsAutoUnref<GFile>;
 
 bool gjs_load_internal_script(JSContext* cx, const char* identifier) {
-    GjsAutoChar full_path(
-        g_strdup_printf("resource://org/gnome/gjs/gjs/%s.js", identifier));
+    GjsAutoChar full_path(g_strdup_printf(
+        "resource://org/gnome/gjs/gjs/internal/%s.js", identifier));
     AutoGFile gfile(g_file_new_for_uri(full_path));
 
     char* script_text_raw;
@@ -97,6 +97,7 @@ bool gjs_load_internal_script(JSContext* cx, const char* identifier) {
     JS::RootedObject internal_global(cx, gjs_get_internal_global(cx));
 
     JSAutoRealm ar(cx, internal_global);
+
     JS::RootedValue ignored_retval(cx);
     JS::RootedObject module(cx, JS_NewPlainObject(cx));
     JS::RootedObjectVector scope_chain(cx);
@@ -128,9 +129,9 @@ bool gjs_load_internal_script(JSContext* cx, const char* identifier) {
     return true;
 }
 
-bool GetModuleUri(JSContext* cx, unsigned argc, JS::Value* vp) {
+bool GetModuleURI(JSContext* cx, unsigned argc, JS::Value* vp) {
     JS::CallArgs args = CallArgsFromVp(argc, vp);
-    if (!args.requireAtLeast(cx, "getModuleUri", 1)) {
+    if (!args.requireAtLeast(cx, "getModuleURI", 1)) {
         return false;
     }
 

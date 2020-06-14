@@ -2,8 +2,10 @@
 <gresources>
   <gresource prefix="/org/gnome/gjs">
     <!-- Internal scripts -->
-    <file>gjs/module.js</file>
-    
+    <file>gjs/internal/errorTypes.js</file>
+    <file>gjs/internal/module.js</file>
+    <file>gjs/internal/module/loaders/file.js</file>
+
     <!-- ESM-based modules -->
     <file>modules/esm/gi.js</file>
     <file>modules/esm/system.js</file>

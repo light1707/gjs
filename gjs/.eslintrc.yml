@@ -19,4 +19,4 @@ globals:
   lookupInternalModule: readonly
   registerInternalModule: readonly
   setModuleResolveHook: readonly
-  getModuleUri: readonly
+  getModuleURI: readonly

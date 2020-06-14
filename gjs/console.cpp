@@ -202,15 +202,15 @@ int define_argv_and_eval_script(GjsContext* js_context, int argc,
     int code;
     if (exec_as_module) {
         GjsAutoUnref<GFile> output = g_file_new_for_commandline_arg(filename);
-        char* full_path = g_file_get_path(output);
-        if (!gjs_context_register_module(js_context, full_path, full_path,
-                                         script, len, &error)) {
+        char* uri = g_file_get_uri(output);
+        if (!gjs_context_register_module(js_context, uri, uri, script, len,
+                                         &error)) {
             g_printerr("%s\n", error->message);
             code = 1;
         }
 
         uint8_t code_8 = 0;
-        if (!gjs_context_eval_module(js_context, full_path, &code_8, &error)) {
+        if (!gjs_context_eval_module(js_context, uri, &code_8, &error)) {
             code = code_8;
             if (!g_error_matches(error, GJS_ERROR, GJS_ERROR_SYSTEM_EXIT))
                 g_critical("%s", error->message);
