@@ -22,9 +22,9 @@
 
 /* global debug, Soup, ImportError */
 
-if (typeof ImportError !== 'function') {
+if (typeof ImportError !== 'function')
     throw new Error('ImportError is not defined in module loader.');
-}
+
 
 // NOTE: Gio, GLib, and GObject have no overrides.
 
@@ -33,7 +33,7 @@ function isRelativePath(id) {
     return id.startsWith('./') || id.startsWith('../');
 }
 
-const allowedRelatives = ["file", "resource"];
+const allowedRelatives = ['file', 'resource'];
 
 const relativeResolvers = new Map();
 const loaders = new Map();
@@ -45,7 +45,7 @@ function registerScheme(...schemes) {
 
     const schemeBuilder = {
         relativeResolver(handler) {
-            forEach((scheme) => {
+            forEach(scheme => {
                 allowedRelatives.push(scheme);
                 relativeResolvers.set(scheme, handler);
             });
@@ -58,7 +58,7 @@ function registerScheme(...schemes) {
             });
 
             return schemeBuilder;
-        }
+        },
     };
 
     return Object.freeze(schemeBuilder);
@@ -69,9 +69,9 @@ globalThis.registerScheme = registerScheme;
 function parseURI(uri) {
     const parsed = Soup.URI.new(uri);
 
-    if (!parsed) {
+    if (!parsed)
         return null;
-    }
+
 
     return {
         raw: uri,
@@ -81,14 +81,14 @@ function parseURI(uri) {
         host: parsed.host,
         port: parsed.port,
         path: parsed.path,
-        fragment: parsed.fragment
+        fragment: parsed.fragment,
     };
 
 }
 
-/** 
+/**
  * @type {Set<string>}
- * 
+ *
  * The set of "module" URIs (the module search path)
  */
 const moduleURIs = new Set();
@@ -102,7 +102,8 @@ registerModuleURI('resource:///org/gnome/gjs/modules/esm/');
 registerModuleURI('resource:///org/gnome/gjs/modules/core/');
 
 /**
- * @param {string} specifier
+ * @param {string} specifier the module specifier
+ * @returns {string[]} a list of potential internal URIs for the module
  */
 function buildInternalURIs(specifier) {
     const builtURIs = [];
@@ -115,14 +116,14 @@ function buildInternalURIs(specifier) {
         builtURIs.push(builtURI);
     }
 
-    return builtURIs
+    return builtURIs;
 }
 
 function resolveRelativePath(moduleURI, relativePath) {
     // If a module has a path, we'll have stored it in the host field
-    if (!moduleURI) {
+    if (!moduleURI)
         throw new ImportError('Cannot import from relative path when module path is unknown.');
-    }
+
 
     debug(`moduleURI: ${moduleURI}`);
 
@@ -137,7 +138,7 @@ function resolveRelativePath(moduleURI, relativePath) {
         } else {
             throw new ImportError(
                 `Relative imports can only occur from the following URI schemes: ${
-                Array.from(relativeResolvers.keys()).map(s => `${s}://`).join(', ')
+                    Array.from(relativeResolvers.keys()).map(s => `${s}://`).join(', ')
                 }`);
         }
     } else {
@@ -151,11 +152,11 @@ function loadURI(uri) {
     if (uri.scheme) {
         const loader = loaders.get(uri.scheme);
 
-        if (loader) {
+        if (loader)
             return loader(uri);
-        } else {
+        else
             throw new ImportError(`No resolver found for URI: ${uri.raw || uri}`);
-        }
+
     } else {
         throw new ImportError(`Unable to load module, module has invalid URI: ${uri.raw || uri}`);
     }
@@ -181,14 +182,14 @@ function resolveSpecifier(specifier, moduleURI = null) {
         }
     }
 
-    if (parsedURI) {
+    if (parsedURI)
         output = loadURI(parsedURI);
-    }
+
 
     if (!output)
         return null;
 
-    return { output, uri };
+    return {output, uri};
 }
 
 function resolveModule(specifier, moduleURI) {
@@ -215,7 +216,7 @@ function resolveModule(specifier, moduleURI) {
     const resolved = resolveSpecifier(specifier, moduleURI);
 
     if (resolved) {
-        const { output, uri } = resolved;
+        const {output, uri} = resolved;
 
         debug(`Full path found: ${uri}`);
 
@@ -236,8 +237,8 @@ function resolveModule(specifier, moduleURI) {
 
     // 2) Resolve internal imports.
 
-    const uri = buildInternalURIs(specifier).find((uri) => {
-        let file = Gio.File.new_for_uri(uri);
+    const uri = buildInternalURIs(specifier).find(u => {
+        let file = Gio.File.new_for_uri(u);
 
         return file && file.query_exists(null);
     });
@@ -257,9 +258,9 @@ setModuleResolveHook((referencingInfo, specifier) => {
     debug('Starting module import...');
     const uri = getModuleURI(referencingInfo);
 
-    if (uri) {
+    if (uri)
         debug(`Found base URI: ${uri}`);
-    }
+
 
     return resolveModule(specifier, uri);
 });

@@ -1,3 +1,3 @@
-import { NamedExport } from './exports.js';
+import {NamedExport} from './exports.js';
 
 print(NamedExport);

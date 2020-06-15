@@ -46,7 +46,7 @@ function onNameAppeared(connection, name, _owner) {
         proxy = new TestProxy(
             Gio.DBus.session,
             'org.gnome.gjs.Test',
-            '/org/gnome/gjs/Test'
+            '/org/gnome/gjs/Test',
         );
     } catch (e) {
         logError(e);
@@ -123,7 +123,7 @@ let busWatchId = Gio.bus_watch_name(
     'org.gnome.gjs.Test',
     Gio.BusNameWatcherFlags.NONE,
     onNameAppeared,
-    onNameVanished
+    onNameVanished,
 );
 
 // Start an event loop
@@ -162,6 +162,6 @@ new TestProxy(
     // Optional Gio.Cancellable object. Pass `null` if you need to pass flags.
     null,
     // Optional flags passed to the Gio.DBusProxy constructor
-    Gio.DBusProxyFlags.NONE
+    Gio.DBusProxyFlags.NONE,
 );
 

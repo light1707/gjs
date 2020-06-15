@@ -51,7 +51,7 @@ class Service {
             // Emitting property changes over DBus
             this.dbus.emit_property_changed(
                 'ReadWriteProperty',
-                new GLib.Variant('b', value)
+                new GLib.Variant('b', value),
             );
         }
     }
@@ -71,7 +71,7 @@ class Service {
     emitTestSignal() {
         this.dbus.emit_signal(
             'TestSignal',
-            new GLib.Variant('(sb)', ['string', false])
+            new GLib.Variant('(sb)', ['string', false]),
         );
     }
 }
@@ -118,7 +118,7 @@ let ownerId = Gio.bus_own_name(
     Gio.BusNameOwnerFlags.NONE,
     onBusAcquired,
     onNameAcquired,
-    onNameLost
+    onNameLost,
 );
 
 

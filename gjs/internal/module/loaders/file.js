@@ -1,3 +1,5 @@
+/* global registerScheme */
+
 function fromBytes(bytes) {
     return ByteUtils.toString(bytes, 'utf-8');
 }
@@ -11,7 +13,7 @@ function loadFileSync(output, full_path) {
     }
 }
 
-registerScheme("file", "resource")
+registerScheme('file', 'resource')
     .relativeResolver((moduleURI, relativePath) => {
         let module_file = Gio.File.new_for_uri(moduleURI.raw);
         let module_parent_file = module_file.get_parent();
