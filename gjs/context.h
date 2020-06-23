@@ -69,6 +69,10 @@ GJS_EXPORT GJS_USE bool gjs_context_define_string_array(
     GjsContext* js_context, const char* array_name, gssize array_length,
     const char** array_values, GError** error);
 
+GJS_EXPORT void gjs_context_set_argv(GjsContext* js_context,
+                                     gssize array_length,
+                                     const char** array_values);
+
 GJS_EXPORT GJS_USE GList* gjs_context_get_all(void);
 
 GJS_EXPORT GJS_USE GjsContext* gjs_context_get_current(void);

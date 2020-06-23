@@ -227,6 +227,20 @@ gjs_printerr(JSContext *context,
     return true;
 }
 
+GJS_JSAPI_RETURN_CONVENTION
+static bool gjs_argv(JSContext* cx, unsigned argc, JS::Value* vp) {
+    JS::CallArgs argv = JS::CallArgsFromVp(argc, vp);
+    GjsContextPrivate* gjs = GjsContextPrivate::from_cx(cx);
+    auto array = gjs_build_string_array(cx, gjs->get_args());
+
+    if (!array) {
+        return false;
+    }
+
+    argv.rval().setObjectOrNull(array);
+    return true;
+}
+
 const JSClassOps defaultclassops = JS::DefaultGlobalClassOps;
 
 class GjsGlobal {
@@ -297,6 +311,12 @@ class GjsGlobal {
             !JS_DefinePropertyById(cx, global, atoms.imports(), root_importer,
                                    GJS_MODULE_PROP_FLAGS))
             return false;
+
+        if (!JS_DefineProperty(cx, global, "ARGV", gjs_argv, nullptr,
+                               GJS_MODULE_PROP_FLAGS | JSPROP_READONLY)) {
+            gjs_log_exception(cx);
+            return false;
+        }
 
         if (bootstrap_script) {
             if (!run_bootstrap(cx, bootstrap_script, global))
