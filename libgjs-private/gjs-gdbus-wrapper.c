@@ -250,16 +250,18 @@ gjs_dbus_implementation_flush (GDBusInterfaceSkeleton *skeleton) {
             g_variant_builder_add(&invalidated_props, "s", prop_name);
     }
 
-    g_dbus_connection_emit_signal(g_dbus_interface_skeleton_get_connection(skeleton),
-                                  NULL, /* bus name */
-                                  g_dbus_interface_skeleton_get_object_path(skeleton),
-                                  "org.freedesktop.DBus.Properties",
-                                  "PropertiesChanged",
-                                  g_variant_new("(s@a{sv}@as)",
-                                                self->priv->ifaceinfo->name,
-                                                g_variant_builder_end(&changed_props),
-                                                g_variant_builder_end(&invalidated_props)),
-                                   NULL /* error */);
+    GDBusConnection* connection =
+        g_dbus_interface_skeleton_get_connection(skeleton);
+    if (connection) {
+        g_dbus_connection_emit_signal(
+            connection, /* bus_name = */ NULL,
+            g_dbus_interface_skeleton_get_object_path(skeleton),
+            "org.freedesktop.DBus.Properties", "PropertiesChanged",
+            g_variant_new("(s@a{sv}@as)", self->priv->ifaceinfo->name,
+                          g_variant_builder_end(&changed_props),
+                          g_variant_builder_end(&invalidated_props)),
+            /* error = */ NULL);
+    }
 
     g_hash_table_remove_all(self->priv->outstanding_properties);
     g_clear_handle_id(&self->priv->idle_id, g_source_remove);
@@ -368,11 +370,14 @@ gjs_dbus_implementation_emit_signal (GjsDBusImplementation *self,
 {
     GDBusInterfaceSkeleton *skeleton = G_DBUS_INTERFACE_SKELETON (self);
 
-    g_dbus_connection_emit_signal(g_dbus_interface_skeleton_get_connection(skeleton),
-                                  NULL,
-                                  g_dbus_interface_skeleton_get_object_path(skeleton),
-                                  self->priv->ifaceinfo->name,
-                                  signal_name,
-                                  parameters,
-                                  NULL);
+    GDBusConnection* connection =
+        g_dbus_interface_skeleton_get_connection(skeleton);
+    if (!connection)
+        return;
+
+    g_dbus_connection_emit_signal(
+        connection, /* bus_name = */ NULL,
+        g_dbus_interface_skeleton_get_object_path(skeleton),
+        self->priv->ifaceinfo->name, signal_name, parameters,
+        /* error = */ NULL);
 }
