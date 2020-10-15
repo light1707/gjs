@@ -78,6 +78,21 @@ function registerClass(...args) {
     return initclass._classInit(klass);
 }
 
+function registerType(klass, options) {
+    let gtypename = _createGTypeName(klass);
+    let gflags = klass.hasOwnProperty(GTypeFlags) ? klass[GTypeFlags] : 0;
+
+    let parent = Object.getPrototypeOf(klass);
+    
+    let registered_type = Gi.register_type(parent.prototype, gtypename, gflags, [], []);
+
+    // TODO: Construct a better "wrapper" than the registered prototype
+    // TODO: Avoid discarding a constructed constructor
+    klass.prototype.$gprototype = registered_type.prototype;
+
+    return registered_type.$gtype;
+}
+
 // Some common functions between GObject.Class and GObject.Interface
 
 function _createSignals(gtype, sigs) {
@@ -420,6 +435,7 @@ function _init() {
     };
 
     GObject.registerClass = registerClass;
+    GObject.registerType = registerType;
 
     GObject.Object._classInit = function (klass) {
         let gtypename = _createGTypeName(klass);

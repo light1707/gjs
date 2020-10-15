@@ -33,6 +33,7 @@ class JSTracer;
     macro(glib, "GLib") \
     macro(gobject, "GObject") \
     macro(gtype, "$gtype") \
+    macro(gprototype, "$gprototype") \
     macro(height, "height") \
     macro(imports, "imports") \
     macro(init, "_init") \

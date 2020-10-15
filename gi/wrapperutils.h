@@ -514,7 +514,19 @@ class GIWrapperBase {
         JS::RootedObject proto(cx);
         if (!JS_GetPrototype(cx, obj, &proto))
             return false;
-        if (JS_GetClass(proto) != &Base::klass) {
+
+        JS::RootedValue gproto(cx);
+
+        bool has_property = false;
+
+        if (!JS_HasOwnProperty(cx, proto, "$gprototype", &has_property)) {
+            return false;
+        }
+
+        if (JS_GetClass(proto) != &Base::klass &&
+            (!has_property ||
+             !JS_GetProperty(cx, proto, "$gprototype", &gproto) ||
+             !gproto.isObject())) {
             gjs_throw(cx, "Tried to construct an object without a GType");
             return false;
         }
@@ -976,6 +988,20 @@ class GIWrapperPrototype : public Base {
                                                      JS::HandleObject wrapper) {
         JS::RootedObject proto(cx);
         JS_GetPrototype(cx, wrapper, &proto);
+
+        if (JS_GetClass(proto) != &Base::klass) {
+            JS::RootedValue gproto(cx);
+
+            // TODO: Use a unique symbol instead.
+            // TODO: Don't store the entire prototype in $gprototype
+            if (JS_GetProperty(cx, proto, "$gprototype", &gproto) &&
+                gproto.isObject()) {
+                proto.set(&gproto.toObject());
+            }
+
+            // TODO: Handle assertions with errors instead.
+        }
+
         Base* retval = Base::for_js(cx, proto);
         g_assert(retval);
         return retval->to_prototype();
