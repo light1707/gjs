@@ -12,6 +12,7 @@
 #endif
 
 #include <string>
+#include <utility>  // for move
 #include <vector>   // for vector
 
 #include <gio/gio.h>
@@ -33,6 +34,7 @@
 #include <js/Value.h>
 #include <jsapi.h>    // for JS_DefinePropertyById, JS_DefineP...
 #include <jspubtd.h>  // for JSProto_Error
+#include <mozilla/HashTable.h>
 #include <mozilla/UniquePtr.h>
 
 #include "gjs/atoms.h"
@@ -281,10 +283,36 @@ gjs_import_native_module(JSContext       *cx,
 {
     gjs_debug(GJS_DEBUG_IMPORTER, "Importing '%s'", parse_name);
 
+    JS::RootedObject native_registry(
+        cx, gjs_get_native_registry(cx, gjs_get_import_global(cx)));
+    JS::RootedValue nv(cx);
+    if (!gjs_string_from_utf8(cx, parse_name, &nv)) {
+        return false;
+    }
+    JS::RootedId id(cx);
+
+    if (!JS_ValueToId(cx, nv, &id)) {
+        return false;
+    }
+
     JS::RootedObject module(cx);
+
+    if (!gjs_global_registry_get(cx, native_registry, id, &module)) {
+        return false;
+    }
+
+    if (module) {
+        return define_meta_properties(cx, module, nullptr, parse_name,
+                                      importer) &&
+               JS_DefineProperty(cx, importer, parse_name, module,
+                                 GJS_MODULE_PROP_FLAGS);
+    }
+
     return gjs_load_native_module(cx, parse_name, &module) &&
+           gjs_global_registry_set(cx, native_registry, id, module) &&
            define_meta_properties(cx, module, nullptr, parse_name, importer) &&
-           JS_DefineProperty(cx, importer, parse_name, module, GJS_MODULE_PROP_FLAGS);
+           JS_DefineProperty(cx, importer, parse_name, module,
+                             GJS_MODULE_PROP_FLAGS);
 }
 
 GJS_JSAPI_RETURN_CONVENTION

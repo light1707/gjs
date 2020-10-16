@@ -1,6 +1,7 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 // SPDX-License-Identifier: MIT OR LGPL-2.0-or-later
 // SPDX-FileCopyrightText: 2017 Philip Chimento <philip.chimento@gmail.com>
+// SPDX-FileCopyrightText: 2020 Evan Welsh <contact@evanwelsh.com>
 
 #include <config.h>
 
@@ -16,13 +17,16 @@
 #include <js/CompilationAndEvaluation.h>
 #include <js/CompileOptions.h>
 #include <js/GCVector.h>  // for RootedVector
+#include <js/Modules.h>
 #include <js/PropertyDescriptor.h>
 #include <js/RootingAPI.h>
 #include <js/SourceText.h>
 #include <js/TypeDecls.h>
+#include <js/Value.h>  // for Value
 #include <jsapi.h>  // for JS_DefinePropertyById, ...
 
 #include "gjs/context-private.h"
+#include "gjs/global.h"
 #include "gjs/jsapi-util.h"
 #include "gjs/mem-private.h"
 #include "gjs/module.h"
@@ -244,3 +248,25 @@ gjs_module_import(JSContext       *cx,
 
 decltype(GjsScriptModule::klass) constexpr GjsScriptModule::klass;
 decltype(GjsScriptModule::class_ops) constexpr GjsScriptModule::class_ops;
+
+/**
+ * gjs_get_module_registry:
+ *
+ * Retrieves a global's native registry from the NATIVE_REGISTRY slot.
+ * Registries are actually JS Maps.
+ *
+ * @param cx the current #JSContext
+ * @param global a global #JSObject
+ *
+ * @returns the registry map as a #JSObject
+ */
+JSObject* gjs_get_native_registry(JSContext* cx, JSObject* global) {
+    JS::Value native_registry =
+        gjs_get_global_slot(global, GjsGlobalSlot::NATIVE_REGISTRY);
+
+    g_assert(native_registry.isObject());
+
+    JS::RootedObject root_registry(cx, &native_registry.toObject());
+
+    return root_registry;
+}

@@ -32,6 +32,7 @@ enum class GjsDebuggerGlobalSlot : uint32_t {
 
 enum class GjsGlobalSlot : uint32_t {
     IMPORTS = static_cast<uint32_t>(GjsBaseGlobalSlot::LAST),
+    NATIVE_REGISTRY,
     PROTOTYPE_gtype,
     PROTOTYPE_importer,
     PROTOTYPE_function,
@@ -54,8 +55,16 @@ enum class GjsGlobalSlot : uint32_t {
     LAST,
 };
 
-GjsGlobalType gjs_global_get_type(JSContext* cx);
+bool gjs_global_is_type(JSContext* cx, GjsGlobalType type);
 GjsGlobalType gjs_global_get_type(JSObject* global);
+
+GJS_JSAPI_RETURN_CONVENTION
+bool gjs_global_registry_set(JSContext* cx, JS::HandleObject registry,
+                             JS::PropertyKey key, JS::HandleObject value);
+GJS_JSAPI_RETURN_CONVENTION
+bool gjs_global_registry_get(JSContext* cx, JS::HandleObject registry,
+                             JS::PropertyKey key,
+                             JS::MutableHandleObject value);
 
 GJS_JSAPI_RETURN_CONVENTION
 JSObject* gjs_create_global_object(JSContext* cx, GjsGlobalType global_type,

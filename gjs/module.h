@@ -1,6 +1,7 @@
 /* -*- mode: C++; c-basic-offset: 4; indent-tabs-mode: nil; -*- */
 // SPDX-License-Identifier: MIT OR LGPL-2.0-or-later
 // SPDX-FileCopyrightText: 2017 Philip Chimento <philip.chimento@gmail.com>
+// SPDX-FileCopyrightText: 2020 Evan Welsh <contact@evanwelsh.com>
 
 #ifndef GJS_MODULE_H_
 #define GJS_MODULE_H_
@@ -20,5 +21,8 @@ gjs_module_import(JSContext       *cx,
                   JS::HandleId     id,
                   const char      *name,
                   GFile           *file);
+
+GJS_JSAPI_RETURN_CONVENTION
+JSObject* gjs_get_native_registry(JSContext* cx, JSObject* global);
 
 #endif  // GJS_MODULE_H_
