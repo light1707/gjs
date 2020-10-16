@@ -58,9 +58,12 @@ constexpr auto get_strict() {
         return char32_t{};
     else if constexpr (type_fits<T, int32_t>())
         return int32_t{};
-    else if constexpr (type_fits<T, uint32_t>())
-        return uint32_t{};
-    else if constexpr (type_fits<T, int64_t>())
+    else if constexpr (type_fits<T, uint32_t>()) {
+        if constexpr (std::is_same_v<T, GType> && TAG == GI_TYPE_TAG_GTYPE)
+            return GType{};
+        else
+            return uint32_t{};
+    } else if constexpr (type_fits<T, int64_t>())
         return int64_t{};
     else if constexpr (type_fits<T, uint64_t>())
         return uint64_t{};
