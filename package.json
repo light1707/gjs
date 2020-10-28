@@ -1,0 +1,15 @@
+{
+  "name": "gjs",
+  "version": "0.0.0",
+  "repository": "https://gitlab.gnome.org/GNOME/gjs",
+  "license": "MIT OR LGPL-2.0-or-later",
+  "private": true,
+  "scripts": {
+    "lint": "eslint . --format unix",
+    "fix": "eslint . --format unix --fix"
+  },
+  "devDependencies": {
+    "eslint": "^7.12.1",
+    "eslint-plugin-jsdoc": "^30.7.3"
+  }
+}

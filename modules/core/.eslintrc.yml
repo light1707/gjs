@@ -1,4 +1,4 @@
 ---
 # SPDX-License-Identifier: MIT OR LGPL-2.0-or-later
-linters:
-  - eslint . --format unix
+rules:
+  jsdoc/require-jsdoc: off
