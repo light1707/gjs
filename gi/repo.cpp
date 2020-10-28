@@ -649,6 +649,40 @@ static JSObject* lookup_namespace(JSContext* context, JSObject* global,
     return retval;
 }
 
+GJS_JSAPI_RETURN_CONVENTION
+static JSObject* lookup_internal_namespace(JSContext* cx, JSObject* global,
+                                           JS::HandleId ns_name) {
+    JS::RootedObject native_registry(cx, gjs_get_native_registry(cx, global));
+
+    const GjsAtoms& atoms = GjsContextPrivate::atoms(cx);
+
+    // The internal global only supports GObject, Gio, GLib, and private
+    // namespaces.
+    if (ns_name == atoms.gobject() || ns_name == atoms.gio() ||
+        ns_name == atoms.glib() || ns_name == atoms.private_ns_marker()) {
+        JS::RootedObject retval(cx);
+
+        if (!gjs_global_registry_get(cx, native_registry, ns_name, &retval))
+            return nullptr;
+
+        return retval;
+    } else if (JSID_IS_STRING(ns_name)) {
+        JS::RootedString str(cx, JSID_TO_STRING(ns_name));
+
+        JS::UniqueChars name(gjs_string_to_utf8(cx, JS::StringValue(str)));
+
+        gjs_throw(
+            cx,
+            "Attempted to load unknown GI namespace (%s) on internal global.",
+            name.get());
+    } else {
+        gjs_throw(cx,
+                  "Attempted to load invalid GI namespace on internal global.");
+    }
+
+    return nullptr;
+}
+
 JSObject* gjs_lookup_namespace_object_by_name(JSContext* context,
                                               JS::HandleId ns_name) {
     JS::RootedObject global(context, JS::CurrentGlobalOrNull(context));
@@ -657,6 +691,9 @@ JSObject* gjs_lookup_namespace_object_by_name(JSContext* context,
     switch (gjs_global_get_type(global)) {
         case GjsGlobalType::DEFAULT:
             ns = lookup_namespace(context, global, ns_name);
+            break;
+        case GjsGlobalType::INTERNAL:
+            ns = lookup_internal_namespace(context, global, ns_name);
             break;
         case GjsGlobalType::DEBUGGER:
             ns = nullptr;

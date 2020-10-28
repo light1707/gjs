@@ -25,4 +25,20 @@ gjs_module_import(JSContext       *cx,
 GJS_JSAPI_RETURN_CONVENTION
 JSObject* gjs_get_native_registry(JSContext* cx, JSObject* global);
 
+GJS_JSAPI_RETURN_CONVENTION
+JSObject* gjs_get_module_registry(JSContext* cx, JSObject* global);
+
+GJS_JSAPI_RETURN_CONVENTION
+JSObject* gjs_module_load(JSContext* cx, const char* identifier,
+                          const char* uri);
+
+GJS_JSAPI_RETURN_CONVENTION
+JSObject* gjs_module_resolve(JSContext* cx, JS::HandleValue mod_val,
+                             JS::HandleString specifier);
+
+GJS_JSAPI_RETURN_CONVENTION
+bool gjs_populate_module_meta(JSContext* m_cx,
+                              JS::Handle<JS::Value> private_ref,
+                              JS::Handle<JSObject*> meta_object);
+
 #endif  // GJS_MODULE_H_

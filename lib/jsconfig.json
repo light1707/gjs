@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: MIT OR LGPL-2.0-or-later
+// SPDX-FileCopyrightText: 2020 Evan Welsh <contact@evanwelsh.com>
+
+{
+    "compilerOptions": {
+        "target": "es2019",
+        "module": "es2020",
+        "moduleResolution": "node",
+        "checkJs": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "noImplicitThis": true,
+        "strict": true,
+        "paths": {
+            "*": [
+                "node_modules/@gi-types/*",
+                "*"
+            ]
+        },
+        "baseUrl": "../"
+    },
+    "include": [
+        "entry.js",
+        "types.d.ts",
+        "bootstrap/lib.js",
+        "modules/esm.js",
+        "modules/gi.js"
+    ]
+}

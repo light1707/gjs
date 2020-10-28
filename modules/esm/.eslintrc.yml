@@ -1,0 +1,5 @@
+---
+extends: '../../.eslintrc.yml'
+parserOptions:
+  sourceType: 'module'
+  ecmaVersion: 2020

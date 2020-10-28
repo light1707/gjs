@@ -19,6 +19,7 @@
 enum class GjsGlobalType {
     DEFAULT,
     DEBUGGER,
+    INTERNAL,
 };
 
 enum class GjsBaseGlobalSlot : uint32_t {
@@ -32,6 +33,14 @@ enum class GjsDebuggerGlobalSlot : uint32_t {
 
 enum class GjsGlobalSlot : uint32_t {
     IMPORTS = static_cast<uint32_t>(GjsBaseGlobalSlot::LAST),
+    // Stores the import resolution hook
+    IMPORT_HOOK,
+    // Stores the module creation hook
+    MODULE_HOOK,
+    // Stores the metadata population hook
+    META_HOOK,
+    // Stores the module registry
+    MODULE_REGISTRY,
     NATIVE_REGISTRY,
     PROTOTYPE_gtype,
     PROTOTYPE_importer,
@@ -53,6 +62,10 @@ enum class GjsGlobalSlot : uint32_t {
     PROTOTYPE_cairo_surface_pattern,
     PROTOTYPE_cairo_svg_surface,
     LAST,
+};
+
+enum class GjsInternalGlobalSlot : uint32_t {
+    LAST = static_cast<uint32_t>(GjsGlobalSlot::LAST),
 };
 
 bool gjs_global_is_type(JSContext* cx, GjsGlobalType type);
@@ -85,6 +98,7 @@ template <typename Slot>
 inline void gjs_set_global_slot(JSObject* global, Slot slot, JS::Value value) {
     static_assert(std::is_same_v<GjsBaseGlobalSlot, Slot> ||
                       std::is_same_v<GjsGlobalSlot, Slot> ||
+                      std::is_same_v<GjsInternalGlobalSlot, Slot> ||
                       std::is_same_v<GjsDebuggerGlobalSlot, Slot>,
                   "Must use a GJS global slot enum");
     detail::set_global_slot(global, static_cast<uint32_t>(slot), value);
@@ -94,6 +108,7 @@ template <typename Slot>
 inline JS::Value gjs_get_global_slot(JSObject* global, Slot slot) {
     static_assert(std::is_same_v<GjsBaseGlobalSlot, Slot> ||
                       std::is_same_v<GjsGlobalSlot, Slot> ||
+                      std::is_same_v<GjsInternalGlobalSlot, Slot> ||
                       std::is_same_v<GjsDebuggerGlobalSlot, Slot>,
                   "Must use a GJS global slot enum");
     return detail::get_global_slot(global, static_cast<uint32_t>(slot));
