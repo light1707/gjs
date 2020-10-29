@@ -5,7 +5,7 @@
 #include <config.h>
 
 #include <signal.h>  // for sigaction, SIGUSR1, sa_handler
-#include <stdint.h>
+#include <stdint.h>  // for uint64_t
 #include <stdio.h>      // for FILE, fclose, size_t
 #include <string.h>     // for memset
 
@@ -125,6 +125,7 @@ enum {
     PROP_PROGRAM_NAME,
     PROP_PROFILER_ENABLED,
     PROP_PROFILER_SIGUSR2,
+    PROP_MODULES_ENABLED,
 };
 
 static GMutex contexts_lock;
@@ -272,6 +273,13 @@ gjs_context_class_init(GjsContextClass *klass)
                                  FALSE,
                                  GParamFlags(G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
     g_object_class_install_property(object_class, PROP_PROFILER_SIGUSR2, pspec);
+    g_param_spec_unref(pspec);
+
+    pspec = g_param_spec_boolean(
+        "modules", "Modules enabled",
+        "Whether to profile JS code run by this context", FALSE,
+        GParamFlags(G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY));
+    g_object_class_install_property(object_class, PROP_MODULES_ENABLED, pspec);
     g_param_spec_unref(pspec);
 
     /* For GjsPrivate */
@@ -549,8 +557,11 @@ gjs_context_set_property (GObject      *object,
     case PROP_PROFILER_SIGUSR2:
         gjs->set_should_listen_sigusr2(g_value_get_boolean(value));
         break;
+    case PROP_MODULES_ENABLED:
+        gjs->set_execute_as_module(g_value_get_boolean(value));
+        break;
     default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
         break;
     }
 }
@@ -915,6 +926,26 @@ gjs_context_eval(GjsContext   *js_context,
     return gjs->eval(script, script_len, filename, exit_status_p, error);
 }
 
+bool gjs_context_eval_module(GjsContext* js_context, const char* name,
+                             uint8_t* exit_code, GError** error) {
+    g_return_val_if_fail(GJS_IS_CONTEXT(js_context), false);
+
+    GjsAutoUnref<GjsContext> js_context_ref(js_context, GjsAutoTakeOwnership());
+
+    GjsContextPrivate* gjs = GjsContextPrivate::from_object(js_context);
+    return gjs->eval_module(name, exit_code, error);
+}
+
+bool gjs_context_register_module(GjsContext* js_context, const char* identifier,
+                                 const char* filename, GError** error) {
+    g_return_val_if_fail(GJS_IS_CONTEXT(js_context), false);
+
+    GjsAutoUnref<GjsContext> js_context_ref(js_context, GjsAutoTakeOwnership());
+
+    GjsContextPrivate* gjs = GjsContextPrivate::from_object(js_context);
+    return gjs->register_module(identifier, filename, error);
+}
+
 bool GjsContextPrivate::eval(const char* script, ssize_t script_len,
                              const char* filename, int* exit_status_p,
                              GError** error) {
@@ -987,6 +1018,36 @@ bool GjsContextPrivate::eval(const char* script, ssize_t script_len,
     return true;
 }
 
+bool GjsContextPrivate::eval_module(const char* identifier,
+                                    uint8_t* exit_status_p, GError** error) {
+    // TODO(ewlsh): Implement eval_module
+    g_print("GjsContextPrivate::eval_module called on identifier %s.",
+            identifier);
+
+    *exit_status_p = 1;
+    *error = nullptr;
+
+    g_error(
+        "GjsContextPrivate::eval_module is not implemented. Exiting with "
+        "error.");
+
+    return false;
+}
+
+bool GjsContextPrivate::register_module(const char* identifier,
+                                        const char* filename,
+                                        GError** error G_GNUC_UNUSED) {
+    // TODO(ewlsh): Implement register_module
+    g_warning(
+        "GjsContextPrivate::register_module is not yet implemented. Printing "
+        "module...");
+
+    *error = nullptr;
+
+    g_warning("Identifier: %s\nFilename: %s\n", identifier, filename);
+    return true;
+}
+
 bool
 gjs_context_eval_file(GjsContext    *js_context,
                       const char    *filename,
@@ -1004,6 +1065,15 @@ gjs_context_eval_file(GjsContext    *js_context,
 
     return gjs_context_eval(js_context, script, script_len, filename,
                             exit_status_p, error);
+}
+
+bool gjs_context_eval_module_file(GjsContext* js_context, const char* filename,
+                                  uint8_t* exit_status_p, GError** error) {
+    GjsAutoUnref<GFile> file = g_file_new_for_commandline_arg(filename);
+    char* fileuri = g_file_get_uri(file);
+
+    return gjs_context_register_module(js_context, fileuri, fileuri, error) &&
+           gjs_context_eval_module(js_context, fileuri, exit_status_p, error);
 }
 
 /*
