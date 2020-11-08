@@ -15,3 +15,5 @@ export let exit = system.exit;
 export let version = system.version;
 
 export let programInvocationName = system.programInvocationName;
+
+export let clearDateCaches = system.clearDateCaches;

@@ -166,6 +166,11 @@ function _packVariant(signature, value) {
     }
 }
 
+/**
+ * @param {*} variant 
+ * @param {boolean} deep 
+ * @param {boolean} [recursive] 
+ */
 function _unpackVariant(variant, deep, recursive = false) {
     switch (String.fromCharCode(variant.classify())) {
     case 'b':
