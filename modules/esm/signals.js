@@ -1,11 +1,3 @@
-const _signals = imports._signals;
-
-function _addSignalMethod(proto, functionName, func) {
-    if (proto[functionName] && proto[functionName] !== func)
-        log(`WARNING: addSignalMethods is replacing existing ${proto} ${functionName} method`);
-
-    proto[functionName] = func;
-}
 
 export class EventEmitter {
     constructor() {
@@ -30,10 +22,6 @@ export class EventEmitter {
 
         // we instantiate the "signal machinery" only on-demand if anything
         // gets connected.
-        if (!('_events' in this)) {
-            this._events = [];
-            this._nextConnectionId = 1n;
-        }
 
         let id = this._nextConnectionId;
         this._nextConnectionId += 1n;
@@ -41,58 +29,52 @@ export class EventEmitter {
         // this makes it O(n) in total connections to emit, but I think
         // it's right to optimize for low memory and reentrancy-safety
         // rather than speed
-        this._events.push({
+
+        this._connectListener(name, {
             id,
             name,
             callback,
             'disconnected': false,
         });
 
-        this._connectListener(name, callback);
-
         return id;
     }
 
     disconnect(id) {
-        if ('_events' in this) {
-            let i;
-            let length = this._events.length;
-            for (i = 0; i < length; ++i) {
-                let connection = this._events[i];
+        this._events.forEach(_events => {
+            for (let i = 0; i < _events.length; ++i) {
+                let connection = _events[i];
                 if (connection.id === id) {
                     if (connection.disconnected)
                         throw new Error(`Signal handler id ${id} already disconnected`);
 
                     // set a flag to deal with removal during emission
                     connection.disconnected = true;
-                    this._events.splice(i, 1);
+                    _events.splice(i, 1);
 
                     return;
                 }
             }
-        }
-        throw new Error(`No signal connection ${id} found`);
+        });
     }
 
     signalHandlerIsConnected(id) {
-        if (!('_events' in this))
-            return false;
-
-        const { length } = this._events;
-        for (let i = 0; i < length; ++i) {
-            const connection = this._events[i];
-            if (connection.id === id)
-                return !connection.disconnected;
-        }
+        this._events.forEach(_events => {
+            for (let i = 0; i < _events.length; ++i) {
+                const connection = this._events[i];
+                if (connection.id === id)
+                    return !connection.disconnected;
+            }
+        });
 
         return false;
     }
 
     disconnectAll() {
-        if ('_events' in this) {
-            while (this._events.length > 0)
-                _disconnect.call(this, this._events[0].id);
-        }
+        this._events.forEach(_events => {
+            while (_events.length > 0)
+                this.disconnect.call(this, _events[0].id);
+        });
     }
 
     emit(name, ...args) {
@@ -104,14 +86,7 @@ export class EventEmitter {
         // emitting), we copy out a list of what was connected
         // at emission start; and just before invoking each
         // handler we check its disconnected flag.
-        let handlers = [];
-        let i;
-        let length = this._events.length;
-        for (i = 0; i < length; ++i) {
-            let connection = this._events[i];
-            if (connection.name === name)
-                handlers.push(connection);
-        }
+        let handlers = [...(this._events.get(name) || [])];
 
         // create arg array which is emitter + everything passed in except
         // signal name. Would be more convenient not to pass emitter to
@@ -121,8 +96,7 @@ export class EventEmitter {
         // which would be a cycle.
         let argArray = [this, ...args];
 
-        length = handlers.length;
-        for (i = 0; i < length; ++i) {
+        for (let i = 0; i < handlers.length; ++i) {
             let connection = handlers[i];
             if (!connection.disconnected) {
                 try {
@@ -141,13 +115,4 @@ export class EventEmitter {
             }
         }
     }
-}
-
-export function addSignalMethods(proto) {
-    _addSignalMethod(proto, 'connect', _connect);
-    _addSignalMethod(proto, 'disconnect', _disconnect);
-    _addSignalMethod(proto, 'emit', _emit);
-    _addSignalMethod(proto, 'signalHandlerIsConnected', _signalHandlerIsConnected);
-    // this one is not in GObject, but useful
-    _addSignalMethod(proto, 'disconnectAll', _disconnectAll);
 }
