@@ -35,6 +35,8 @@ enum class GjsGlobalSlot : uint32_t {
     IMPORTS = static_cast<uint32_t>(GjsBaseGlobalSlot::LAST),
     // Stores the import resolution hook
     IMPORT_HOOK,
+    // Stores the import resolution hook
+    DYNAMIC_IMPORT_HOOK,
     // Stores the module creation hook
     MODULE_HOOK,
     // Stores the metadata population hook

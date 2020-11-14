@@ -15,9 +15,15 @@ bool CompileModule(JSContext* cx, unsigned argc, JS::Value* vp);
 
 bool CompileInternalModule(JSContext* cx, unsigned argc, JS::Value* vp);
 
+bool SetModuleDynamicImportHook(JSContext* cx, unsigned argc, JS::Value* vp);
+
+bool FinishDynamicModuleImport(JSContext* cx, unsigned argc, JS::Value* vp);
+
 bool GetRegistry(JSContext* cx, unsigned argc, JS::Value* vp);
 
 bool ImportSync(JSContext* cx, unsigned argc, JS::Value* vp);
+
+bool InitAndEval(JSContext* cx, unsigned argc, JS::Value* vp);
 
 bool SetModuleLoadHook(JSContext* cx, unsigned argc, JS::Value* vp);
 

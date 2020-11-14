@@ -284,11 +284,14 @@ class GjsInternalGlobal : GjsBaseGlobal {
     static constexpr JSFunctionSpec static_funcs[] = {
         JS_FN("compileModule", CompileModule, 2, 0),
         JS_FN("compileInternalModule", CompileInternalModule, 2, 0),
+        JS_FN("finishDynamicModuleImport", FinishDynamicModuleImport, 3, 0),
         JS_FN("getRegistry", GetRegistry, 1, 0),
         JS_FN("importSync", ImportSync, 1, 0),
+        JS_FN("initAndEval", InitAndEval, 1, 0),
         JS_FN("setModuleLoadHook", SetModuleLoadHook, 3, 0),
         JS_FN("setModuleMetaHook", SetModuleMetaHook, 2, 0),
         JS_FN("setModulePrivate", SetModulePrivate, 2, 0),
+        JS_FN("setModuleDynamicImportHook", SetModuleDynamicImportHook, 2, 0),
         JS_FN("setModuleResolveHook", SetModuleResolveHook, 2, 0),
         JS_FS_END};
 

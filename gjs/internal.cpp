@@ -160,6 +160,59 @@ bool SetModuleLoadHook(JSContext* cx, unsigned argc, JS::Value* vp) {
     return true;
 }
 
+bool SetModuleDynamicImportHook(JSContext* cx, unsigned argc, JS::Value* vp) {
+    JS::CallArgs args = CallArgsFromVp(argc, vp);
+    if (!args.requireAtLeast(cx, "setModuleDynamicImportHook", 2)) {
+        return false;
+    }
+
+    JS::RootedValue gv(cx, args[0]);
+    JS::RootedValue mv(cx, args[1]);
+
+    g_assert(gv.isObject());
+
+    // The hook is stored in the internal global.
+    JS::RootedObject global(cx, &gv.toObject());
+
+    // The dynamic hook is stored in the internal global.
+
+    gjs_set_global_slot(global, GjsGlobalSlot::DYNAMIC_IMPORT_HOOK, mv);
+
+    args.rval().setUndefined();
+    return true;
+}
+
+bool FinishDynamicModuleImport(JSContext* cx, unsigned argc, JS::Value* vp) {
+    JS::CallArgs args = CallArgsFromVp(argc, vp);
+
+    if (!args.requireAtLeast(cx, "finishDynamicModuleImport", 3)) {
+        return false;
+    }
+
+    if (JS_IsExceptionPending(cx)) {
+        gjs_log_exception_uncaught(cx);
+        gjs_throw(cx, "Uncaught exception in module!");
+        return false;
+    }
+
+    JS::RootedString specifier(cx, args[1].toString());
+    JS::RootedObject promise(cx, &args[2].toObject());
+
+    auto priv = GjsContextPrivate::from_cx(cx);
+    // gjs_module_resolve is called within whatever realm the dynamic import is
+    // finished in.
+    {
+        JSAutoRealm ar(cx, priv->global());
+
+        if (!JS_WrapObject(cx, &promise)) {
+            gjs_throw(cx, "Failed to wrap dynamic imports' promise.");
+            return false;
+        }
+
+        return JS::FinishDynamicModuleImport(cx, args[0], specifier, promise);
+    }
+}
+
 /**
  * SetModuleResolveHook:
  *
@@ -247,7 +300,7 @@ static bool compile_module(JSContext* cx, JS::CallArgs args) {
 
     JS::UniqueChars uri = JS_EncodeStringToUTF8(cx, s1);
     JS::UniqueChars text = JS_EncodeStringToUTF8(cx, s2);
-    size_t text_len = JS_GetStringLength(s2);
+    size_t text_len = strlen(text.get());
 
     JS::CompileOptions options(cx);
     options.setFileAndLine(uri.get(), 1).setSourceIsLazy(false);
@@ -346,6 +399,30 @@ bool SetModulePrivate(JSContext* cx, unsigned argc, JS::Value* vp) {
     JS::RootedObject privateObj(cx, &args[1].toObject());
 
     JS::SetModulePrivate(moduleObj, JS::ObjectValue(*privateObj));
+    return true;
+}
+
+bool InitAndEval(JSContext* cx, unsigned argc, JS::Value* vp) {
+    JS::CallArgs args = CallArgsFromVp(argc, vp);
+
+    if (!args.requireAtLeast(cx, "initAndEval", 1)) {
+        return false;
+    }
+    JS::RootedObject global(cx, gjs_get_import_global(cx));
+    JSAutoRealm ar(cx, global);
+
+    JS::RootedObject new_module(cx, &args[0].toObject());
+
+    if (!JS::ModuleInstantiate(cx, new_module)) {
+        gjs_log_exception(cx);
+        return false;
+    }
+    if (!JS::ModuleEvaluate(cx, new_module)) {
+        gjs_log_exception(cx);
+        return false;
+    }
+
+    args.rval().setUndefined();
     return true;
 }
 

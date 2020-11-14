@@ -11,7 +11,7 @@
     "typecheck:lib": "tsc -p lib/jsconfig.json"
   },
   "devDependencies": {
-    "@gi-types/gio": "^2.66.3",
+    "@gi-types/gio": "^2.66.5",
     "@gi-types/glib": "^2.66.3",
     "@gi-types/gobject": "^2.66.3",
     "@gi-types/gtk": "^3.24.3",

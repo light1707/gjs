@@ -57,12 +57,18 @@ declare global {
     export function setModulePrivate(module: Module, private: ESModule);
 
     /**
-     * 
      * @param global 
      * @param hook 
      */
     export function setModuleLoadHook(global: typeof globalThis, hook: (id: string, uri: string) => Module);
+    
+    /** 
+     * @param global 
+     * @param hook 
+     */
+    export function setModuleDynamicImportHook(global: typeof globalThis, hook: (module: ESModule, specifier: string, promise: unknown) => void);
 
+    export function finishDynamicModuleImport(module: ESModule, specifier: string, promise: unknown): void;
     /**
      * 
      * @param global 

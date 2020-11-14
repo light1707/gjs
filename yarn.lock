@@ -77,10 +77,23 @@
   dependencies:
     "@gi-types/gobject" "^2.66.3"
 
+"@gi-types/gio@^2.66.5":
+  version "2.66.5"
+  resolved "https://registry.yarnpkg.com/@gi-types/gio/-/gio-2.66.5.tgz#6ef8755e9f1ec818f69b397b5464b4a70e8033fe"
+  integrity sha512-i1aTbsOT3p4bl6/MWbXT/GNxM9XCZ1eZ0oEbb65V14eoM60KtKycZ/T/WyPA4fLHTATUJJN0MESpFzMVuBzrtA==
+  dependencies:
+    "@gi-types/glib" "^2.66.5"
+    "@gi-types/gobject" "^2.66.5"
+
 "@gi-types/glib@^2.66.2", "@gi-types/glib@^2.66.3":
   version "2.66.3"
   resolved "https://registry.yarnpkg.com/@gi-types/glib/-/glib-2.66.3.tgz#795e6566f25de5dddaab72fa30c16136334c80c7"
   integrity sha512-EoT/w9ImW5QyMicZ/I9yh3CzgZWcTPrm96siyC5qApNzblLsNixt3MzPQvnFoKqdLNCHrbAcgXTHZKzyqVztww==
+
+"@gi-types/glib@^2.66.5":
+  version "2.66.5"
+  resolved "https://registry.yarnpkg.com/@gi-types/glib/-/glib-2.66.5.tgz#a396e941366d672538b43a10d9909aabb7f5d3c7"
+  integrity sha512-5S/L0fOtVii9djkEqw/CaIVnsd3uF8VwK2bRqKAf2HiZ8WcVCh5SOW7spCbOD42En42oB0VTYAVKKPBxceP9ig==
 
 "@gi-types/gobject@^2.66.2", "@gi-types/gobject@^2.66.3":
   version "2.66.3"
@@ -88,6 +101,13 @@
   integrity sha512-VP756l82z8jVPNWowpsdbJORYGx1HyZMxZzL10+FGTdgKiTzx+cMuMD066h4g2PYTTuOGy6vr+xbUcnhLonYhQ==
   dependencies:
     "@gi-types/glib" "^2.66.2"
+
+"@gi-types/gobject@^2.66.5":
+  version "2.66.5"
+  resolved "https://registry.yarnpkg.com/@gi-types/gobject/-/gobject-2.66.5.tgz#a1f193bffde7753f90c8d6c147a6ec424d067e76"
+  integrity sha512-3qX2bw+ITRDhkTLU+tAgggzV+W80hjYh6gQaUjbVyAJEIO0oFQ8EjfyipgawU/akxv377iNgFx/OZcNSP++1Ow==
+  dependencies:
+    "@gi-types/glib" "^2.66.5"
 
 "@gi-types/gtk@^3.24.3":
   version "3.24.3"
