@@ -75,6 +75,48 @@ JS::UniqueChars gjs_string_to_utf8(JSContext* cx, const JS::Value value) {
     return JS_EncodeStringToUTF8(cx, str);
 }
 
+bool gjs_lossy_string_from_utf8(JSContext* cx, const char* utf8_string,
+                                JS::MutableHandleValue value_p) {
+    JS::ConstUTF8CharsZ chars(utf8_string, strlen(utf8_string));
+    size_t len;
+    JS::UniqueTwoByteChars twobyte_chars(
+        JS::LossyUTF8CharsToNewTwoByteCharsZ(cx, chars, &len, js::MallocArena)
+            .get());
+
+    if (!twobyte_chars) {
+        return false;
+    }
+
+    JS::RootedString str(cx, JS_NewUCStringCopyN(cx, twobyte_chars.get(), len));
+
+    if (str)
+        value_p.setString(str);
+
+    return str != nullptr;
+}
+bool gjs_lossy_string_from_utf8_n(JSContext* cx, const char* utf8_string,
+                                  size_t len, JS::MutableHandleValue value_p) {
+    JS::UTF8Chars chars(utf8_string, len);
+    size_t outlen;
+
+    JS::UniqueTwoByteChars twobyte_chars(
+        JS::LossyUTF8CharsToNewTwoByteCharsZ(cx, chars, &outlen,
+                                             js::MallocArena)
+            .get());
+
+    if (!twobyte_chars) {
+        return false;
+    }
+
+    JS::RootedString str(cx,
+                         JS_NewUCStringCopyN(cx, twobyte_chars.get(), outlen));
+
+    if (str)
+        value_p.setString(str);
+
+    return str != nullptr;
+}
+
 bool
 gjs_string_from_utf8(JSContext             *context,
                      const char            *utf8_string,

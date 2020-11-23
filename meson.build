@@ -403,6 +403,7 @@ libgjs_sources = [
     'gjs/module.cpp', 'gjs/module.h',
     'gjs/native.cpp', 'gjs/native.h',
     'gjs/profiler.cpp', 'gjs/profiler-private.h',
+    'gjs/textEncoding.cpp', 'gjs/textEncoding.h',
     'gjs/stack.cpp',
     'modules/console.cpp', 'modules/console.h',
     'modules/modules.cpp', 'modules/modules.h',

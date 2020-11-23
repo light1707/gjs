@@ -70,7 +70,6 @@ rules:
   jsdoc/newline-after-description: error
   jsdoc/require-jsdoc: error
   jsdoc/require-param: error
-  jsdoc/require-param-description: error
   jsdoc/require-param-name: error
   jsdoc/require-param-type: error
   key-spacing:
@@ -243,5 +242,7 @@ globals:
   logError: readonly
   print: readonly
   printerr: readonly
+  TextEncoder: readonly
+  TextDecoder: readonly
 parserOptions:
   ecmaVersion: 2020

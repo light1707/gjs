@@ -90,6 +90,7 @@ gimarshallingtests_typelib = gimarshallingtests_gir[1]
 jasmine_tests = [
     'self',
     'ByteArray',
+    'Encoding',
     'Exceptions',
     'Format',
     'Fundamental',

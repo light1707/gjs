@@ -20,7 +20,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-
 The following files contain code from Mozilla which
 is triple licensed under MPL1.1/LGPLv2+/GPLv2+:
 The console module (modules/console.c)
+
+The following files contain code from Node.js which
+is licensed under MIT:
+The _encodings core module (modules/core/_encodings.js)
+
+The following files contain code from Deno which
+is licensed under MIT:
+The encoding test suite (installed-tests/js/testEncoding.js)

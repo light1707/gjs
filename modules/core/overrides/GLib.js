@@ -51,10 +51,7 @@ function _readSingleType(signature, forceSimple) {
 }
 
 function _makeBytes(byteArray) {
-    if (byteArray instanceof Uint8Array || byteArray instanceof ByteArray.ByteArray)
-        return ByteArray.toGBytes(byteArray);
-    else
-        return new GLib.Bytes(byteArray);
+    return new GLib.Bytes(byteArray);
 }
 
 function _packVariant(signature, value) {
@@ -308,7 +305,7 @@ function _init() {
     };
 
     this.Bytes.prototype.toArray = function () {
-        return imports.byteArray.fromGBytes(this);
+        return imports._byteArrayNative.fromGBytes(this);
     };
 
     this.log_structured = function (logDomain, logLevel, stringFields) {

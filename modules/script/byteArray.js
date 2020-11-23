@@ -1,13 +1,59 @@
 /* exported ByteArray, fromArray, fromGBytes, fromString, toGBytes, toString */
 // SPDX-License-Identifier: MIT OR LGPL-2.0-or-later
 
+const Encoding = imports._encodingNative;
+
 /* eslint no-redeclare: ["error", { "builtinGlobals": false }] */  // for toString
-var {fromGBytes, fromString, toGBytes, toString} = imports._byteArrayNative;
+var {fromGBytes, defineToString} = imports._byteArrayNative;
+
+const {GLib} = imports.gi;
 
 // For backwards compatibility
 
+/**
+ * @param {Iterable<number>} a
+ * @returns {ByteArray}
+ */
 function fromArray(a) {
     return new ByteArray(Uint8Array.from(a));
+}
+
+/**
+ * @param {Uint8Array} array
+ * @returns {GLib.Bytes}
+ */
+function toGBytes(array) {
+    if (!(array instanceof Uint8Array))
+        throw new Error('Argument to ByteArray.toGBytes() must be a Uint8Array');
+
+
+    return new GLib.Bytes(array);
+}
+
+/**
+ * @param {Uint8Array} array
+ * @param {string} [encoding]
+ * @returns {string}
+ */
+function toString(array, encoding = 'utf-8') {
+    if (!(array instanceof Uint8Array))
+        throw new Error('Argument to ByteArray.toString() must be a Uint8Array');
+
+
+    return Encoding.decode(array, true, encoding);
+}
+
+/**
+ * @param {string} str
+ * @param {string} [encoding]
+ * @returns {Uint8Array}
+ */
+function fromString(str, encoding = 'utf-8') {
+    const array = Encoding.encode(str, encoding);
+
+    defineToString(array);
+
+    return array;
 }
 
 var ByteArray = class ByteArray {

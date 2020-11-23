@@ -4,8 +4,21 @@
     'use strict';
 
     const {print, printerr, log, logError} = imports._print;
+    const {TextEncoder, TextDecoder} = imports._text;
 
     Object.defineProperties(exports, {
+        TextEncoder: {
+            configurable: false,
+            enumerable: true,
+            writable: false,
+            value: TextEncoder,
+        },
+        TextDecoder: {
+            configurable: false,
+            enumerable: true,
+            writable: false,
+            value: TextDecoder,
+        },
         print: {
             configurable: false,
             enumerable: true,
