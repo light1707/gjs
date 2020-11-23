@@ -113,7 +113,7 @@ endif
 
 ### Check for required libraries ###############################################
 
-glib_required_version = '>= 2.58.0'
+glib_required_version = '>= 2.66.0'
 glib = dependency('glib-2.0', version: glib_required_version,
     fallback: ['glib', 'libglib_dep'])
 gthread = dependency('gthread-2.0', version: glib_required_version,
