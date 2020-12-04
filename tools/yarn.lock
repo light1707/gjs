@@ -39,6 +39,74 @@
     minimatch "^3.0.4"
     strip-json-comments "^3.1.1"
 
+"@gi-types/atk@^2.36.3":
+  version "2.36.3"
+  resolved "https://registry.yarnpkg.com/@gi-types/atk/-/atk-2.36.3.tgz#5853b6eb48d92a2cafcfa92c5c1d1ade4d63f559"
+  integrity sha512-bUU8nGdMwZlnidgHsH4Rk4VfSX+ZXNbJJw27E98ujZG1dTM/qeIam5nWq4z74K9YvFK6E1g0b5c76LTbDpxLCg==
+  dependencies:
+    "@gi-types/gobject" "^2.66.3"
+
+"@gi-types/cairo@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@gi-types/cairo/-/cairo-1.0.2.tgz#abc51eb22331d6d20f01cea7e86a8538befdac70"
+  integrity sha512-b6jOZtt7XqeHlMPk+6MjL76f6rhPjt0oFlsZG7nOoP3OILRD9146dCvOmQTybdmLtycvgW2P73O7GAFFtf8zIA==
+
+"@gi-types/gdk@^3.24.2":
+  version "3.24.2"
+  resolved "https://registry.yarnpkg.com/@gi-types/gdk/-/gdk-3.24.2.tgz#06708399d9c66babc88299aa21bbd51b5499b04c"
+  integrity sha512-0fgRJFJXRAUU7/ePgbznqPSrc33vOIhWMFNLhlanNS7G2qWyjsm8GLyXD+h8iWAtCg4JxznBJKoDPyfAul3e+Q==
+  dependencies:
+    "@gi-types/cairo" "^1.0.2"
+    "@gi-types/gdkpixbuf" "^2.0.2"
+    "@gi-types/gio" "^2.66.2"
+    "@gi-types/gobject" "^2.66.2"
+    "@gi-types/pango" "^1.0.2"
+
+"@gi-types/gdkpixbuf@^2.0.2":
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/@gi-types/gdkpixbuf/-/gdkpixbuf-2.0.3.tgz#a2a19b8d8604a5d5706dee43b051e129543480be"
+  integrity sha512-ATfMjEtmNHKNgjaBuIjpzh5RgTO1zk3D6ltwqHbPg5qQxWREe7kCSiI7eRsikP285u4e0tSGb6UJDamYZxUU2Q==
+  dependencies:
+    "@gi-types/gio" "^2.66.3"
+    "@gi-types/gobject" "^2.66.3"
+
+"@gi-types/gio@^2.66.2", "@gi-types/gio@^2.66.3":
+  version "2.66.3"
+  resolved "https://registry.yarnpkg.com/@gi-types/gio/-/gio-2.66.3.tgz#a9a071be3617d929778ee4036270031b341be2d8"
+  integrity sha512-ROjWtIqzWAODgEKIK0umz2i2kZoKiWks2beV111u+XOo/CdVpIQn3F8VJAAPhXoTD+hyhrBDt9NcnOQZGHV3ug==
+  dependencies:
+    "@gi-types/gobject" "^2.66.3"
+
+"@gi-types/glib@^2.66.2", "@gi-types/glib@^2.66.3":
+  version "2.66.3"
+  resolved "https://registry.yarnpkg.com/@gi-types/glib/-/glib-2.66.3.tgz#795e6566f25de5dddaab72fa30c16136334c80c7"
+  integrity sha512-EoT/w9ImW5QyMicZ/I9yh3CzgZWcTPrm96siyC5qApNzblLsNixt3MzPQvnFoKqdLNCHrbAcgXTHZKzyqVztww==
+
+"@gi-types/gobject@^2.66.2", "@gi-types/gobject@^2.66.3":
+  version "2.66.3"
+  resolved "https://registry.yarnpkg.com/@gi-types/gobject/-/gobject-2.66.3.tgz#41bc8b141a5bb78bcbce6252646d7ef71fa8b275"
+  integrity sha512-VP756l82z8jVPNWowpsdbJORYGx1HyZMxZzL10+FGTdgKiTzx+cMuMD066h4g2PYTTuOGy6vr+xbUcnhLonYhQ==
+  dependencies:
+    "@gi-types/glib" "^2.66.2"
+
+"@gi-types/gtk@^3.24.3":
+  version "3.24.3"
+  resolved "https://registry.yarnpkg.com/@gi-types/gtk/-/gtk-3.24.3.tgz#a5d5c12edf27313c54f22d8def69625e933eb0c7"
+  integrity sha512-nCyRGXsd8SJ94iqfrA8rCWBKC4x07YeUIBWeDCqJzU+9Gfacfl/XTxptoEFXRFnksrHRbj5DmKllix9N25U4KA==
+  dependencies:
+    "@gi-types/atk" "^2.36.3"
+    "@gi-types/gdk" "^3.24.2"
+    "@gi-types/gio" "^2.66.3"
+    "@gi-types/gobject" "^2.66.3"
+
+"@gi-types/pango@^1.0.2":
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/@gi-types/pango/-/pango-1.0.3.tgz#4fba9b6c110180674ec42e3581fd061d12ef7f62"
+  integrity sha512-tQ7c5yf2cyla3ta5ctEOtI/z5nX4NJteYCV3XoNkC8EMRvcyiDqYi6tGUG3ErnUG4EjczgVBh902gZ2K5lQwvg==
+  dependencies:
+    "@gi-types/cairo" "^1.0.2"
+    "@gi-types/gobject" "^2.66.2"
+
 acorn-jsx@^5.2.0:
   version "5.3.1"
   resolved "https://registry.yarnpkg.com/acorn-jsx/-/acorn-jsx-5.3.1.tgz#fc8661e11b7ac1539c47dbfea2e72b3af34d267b"
@@ -733,6 +801,11 @@ type-fest@^0.8.1:
   version "0.8.1"
   resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-0.8.1.tgz#09e249ebde851d3b1e48d27c105444667f17b83d"
   integrity sha512-4dbzIzqvjtgiM5rw1k5rEHtBANKmdudhGyBEajN01fEyhaAIhsoKNy6y7+IN93IfpFtwY9iqi7kD+xwKhQsNJA==
+
+typescript@^4.0.5:
+  version "4.0.5"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.0.5.tgz#ae9dddfd1069f1cb5beb3ef3b2170dd7c1332389"
+  integrity sha512-ywmr/VrTVCmNTJ6iV2LwIrfG1P+lv6luD8sUJs+2eI9NLGigaN+nUQc13iHqisq7bra9lnmUSYqbJvegraBOPQ==
 
 uri-js@^4.2.2:
   version "4.4.0"

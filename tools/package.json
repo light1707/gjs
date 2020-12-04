@@ -6,10 +6,17 @@
   "private": true,
   "scripts": {
     "lint": "cd .. && eslint . --format unix --resolve-plugins-relative-to tools",
-    "fix": "yarn lint --fix"
+    "fix": "yarn lint --fix",
+    "typecheck": "yarn run typecheck:lib",
+    "typecheck:lib": "cd .. && tsc -p lib/jsconfig.json"
   },
   "devDependencies": {
+    "@gi-types/gio": "^2.66.3",
+    "@gi-types/glib": "^2.66.3",
+    "@gi-types/gobject": "^2.66.3",
+    "@gi-types/gtk": "^3.24.3",
     "eslint": "^7.12.1",
-    "eslint-plugin-jsdoc": "^30.7.3"
+    "eslint-plugin-jsdoc": "^30.7.3",
+    "typescript": "^4.0.5"
   }
 }
