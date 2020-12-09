@@ -1,4 +1,0 @@
-[Test]
-Type=session
-Exec=@installed_tests_execdir@/esm-test.sh @installed_tests_execdir@/esm/@name@
-Output=TAP
