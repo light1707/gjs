@@ -3,6 +3,10 @@
 
 export const {vprintf} = imports._format;
 
+/**
+ * @param {any[]} args FIXME
+ */
 export function format(...args) {
+    // eslint-disable-next-line no-invalid-this
     return vprintf(this, args);
 }
