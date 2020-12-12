@@ -272,6 +272,7 @@ class GjsInternalGlobal : GjsBaseGlobal {
               0),
         JS_FN("getRegistry", gjs_internal_global_get_registry, 1, 0),
         JS_FN("importSync", gjs_internal_global_import_sync, 1, 0),
+        JS_FN("parseURI", gjs_internal_parse_uri, 1, 0),
         JS_FN("setModuleLoadHook", gjs_internal_global_set_module_hook, 3, 0),
         JS_FN("setModuleMetaHook", gjs_internal_global_set_module_meta_hook, 2,
               0),

@@ -15,12 +15,12 @@ globals:
   logError: off
   print: off
   printerr: off
-  GLib: readonly
   Gio: readonly
   ByteUtils: readonly
   moduleGlobalThis: readonly
   compileModule: readonly
   compileInternalModule: readonly
+  parseURI: readonly
   setModuleResolveHook: readonly
   setModuleMetaHook: readonly
   setModuleLoadHook: readonly
