@@ -39,4 +39,9 @@ bool gjs_internal_global_set_module_resolve_hook(JSContext* cx, unsigned argc,
 GJS_JSAPI_RETURN_CONVENTION
 bool gjs_internal_parse_uri(JSContext* cx, unsigned argc, JS::Value* vp);
 
+GJS_JSAPI_RETURN_CONVENTION
+bool gjs_internal_resolve_relative_resource_or_file(JSContext* cx,
+                                                    unsigned argc,
+                                                    JS::Value* vp);
+
 #endif  // GJS_INTERNAL_H_

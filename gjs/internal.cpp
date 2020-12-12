@@ -473,3 +473,42 @@ bool gjs_internal_parse_uri(JSContext* cx, unsigned argc, JS::Value* vp) {
     args.rval().setObject(*return_obj);
     return true;
 }
+
+bool gjs_internal_resolve_relative_resource_or_file(JSContext* cx,
+                                                    unsigned argc,
+                                                    JS::Value* vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+
+    g_assert(args.length() == 2 && "resolveRelativeResourceOrFile(str, str)");
+    g_assert(args[0].isString() && "resolveRelativeResourceOrFile(str, str)");
+    g_assert(args[1].isString() && "resolveRelativeResourceOrFile(str, str)");
+
+    JS::RootedString string_arg(cx, args[0].toString());
+    JS::UniqueChars uri = JS_EncodeStringToUTF8(cx, string_arg);
+    if (!uri)
+        return false;
+    string_arg = args[1].toString();
+    JS::UniqueChars relative_path = JS_EncodeStringToUTF8(cx, string_arg);
+    if (!relative_path)
+        return false;
+
+    GjsAutoUnref<GFile> module_file = g_file_new_for_uri(uri.get());
+    GjsAutoUnref<GFile> module_parent_file = g_file_get_parent(module_file);
+
+    if (module_parent_file) {
+        GjsAutoUnref<GFile> output = g_file_resolve_relative_path(
+            module_parent_file, relative_path.get());
+        GjsAutoChar output_uri = g_file_get_uri(output);
+
+        JS::ConstUTF8CharsZ uri_chars(output_uri, strlen(output_uri));
+        JS::RootedString retval(cx, JS_NewStringCopyUTF8Z(cx, uri_chars));
+        if (!retval)
+            return false;
+
+        args.rval().setString(retval);
+        return true;
+    }
+
+    args.rval().setNull();
+    return true;
+}

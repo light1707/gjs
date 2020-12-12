@@ -21,6 +21,7 @@ globals:
   compileModule: readonly
   compileInternalModule: readonly
   parseURI: readonly
+  resolveRelativeResourceOrFile: readonly
   setModuleResolveHook: readonly
   setModuleMetaHook: readonly
   setModuleLoadHook: readonly
