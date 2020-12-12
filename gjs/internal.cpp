@@ -512,3 +512,35 @@ bool gjs_internal_resolve_relative_resource_or_file(JSContext* cx,
     args.rval().setNull();
     return true;
 }
+
+bool gjs_internal_load_resource_or_file(JSContext* cx, unsigned argc,
+                                        JS::Value* vp) {
+    JS::CallArgs args = CallArgsFromVp(argc, vp);
+
+    g_assert(args.length() == 1 && "loadResourceOrFile(str)");
+    g_assert(args[0].isString() && "loadResourceOrFile(str)");
+
+    JS::RootedString string_arg(cx, args[0].toString());
+    JS::UniqueChars uri = JS_EncodeStringToUTF8(cx, string_arg);
+    if (!uri)
+        return false;
+
+    GjsAutoUnref<GFile> file = g_file_new_for_uri(uri.get());
+
+    char* contents;
+    size_t length;
+    GError* error = nullptr;
+    if (!g_file_load_contents(file, /* cancellable = */ nullptr, &contents,
+                              &length, /* etag_out = */ nullptr, &error))
+        return gjs_throw_gerror_message(cx, error);
+
+    JS::ConstUTF8CharsZ contents_chars{contents, length};
+    JS::RootedString contents_str(cx,
+                                  JS_NewStringCopyUTF8Z(cx, contents_chars));
+    g_free(contents);
+    if (!contents_str)
+        return false;
+
+    args.rval().setString(contents_str);
+    return true;
+}

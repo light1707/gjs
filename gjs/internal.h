@@ -44,4 +44,8 @@ bool gjs_internal_resolve_relative_resource_or_file(JSContext* cx,
                                                     unsigned argc,
                                                     JS::Value* vp);
 
+GJS_JSAPI_RETURN_CONVENTION
+bool gjs_internal_load_resource_or_file(JSContext* cx, unsigned argc,
+                                        JS::Value* vp);
+
 #endif  // GJS_INTERNAL_H_

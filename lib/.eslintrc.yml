@@ -20,6 +20,7 @@ globals:
   moduleGlobalThis: readonly
   compileModule: readonly
   compileInternalModule: readonly
+  loadResourceOrFile: readonly
   parseURI: readonly
   resolveRelativeResourceOrFile: readonly
   setModuleResolveHook: readonly
