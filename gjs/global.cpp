@@ -282,6 +282,7 @@ class GjsInternalGlobal : GjsBaseGlobal {
         JS_FN("setModulePrivate", gjs_internal_set_module_private, 2, 0),
         JS_FN("setModuleResolveHook",
               gjs_internal_global_set_module_resolve_hook, 2, 0),
+        JS_FN("uriExists", gjs_internal_uri_exists, 1, 0),
         JS_FS_END};
 
     static constexpr JSClassOps classops = {nullptr,  // addProperty

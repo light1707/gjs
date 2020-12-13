@@ -544,3 +544,20 @@ bool gjs_internal_load_resource_or_file(JSContext* cx, unsigned argc,
     args.rval().setString(contents_str);
     return true;
 }
+
+bool gjs_internal_uri_exists(JSContext* cx, unsigned argc, JS::Value* vp) {
+    JS::CallArgs args = CallArgsFromVp(argc, vp);
+
+    g_assert(args.length() >= 1 && "uriExists(str)");  // extra args are OK
+    g_assert(args[0].isString() && "uriExists(str)");
+
+    JS::RootedString string_arg(cx, args[0].toString());
+    JS::UniqueChars uri = JS_EncodeStringToUTF8(cx, string_arg);
+    if (!uri)
+        return false;
+
+    GjsAutoUnref<GFile> file = g_file_new_for_uri(uri.get());
+
+    args.rval().setBoolean(g_file_query_exists(file, nullptr));
+    return true;
+}
