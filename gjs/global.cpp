@@ -9,7 +9,6 @@
 
 #include <stddef.h>  // for size_t
 
-#include <girepository.h>
 #include <glib.h>
 
 #include <js/CallArgs.h>           // for CallArgs, CallArgsFromVp
@@ -28,7 +27,6 @@
 #include <js/Utility.h>  // for UniqueChars
 #include <jsapi.h>       // for AutoSaveExceptionState, ...
 
-#include "gi/ns.h"
 #include "gjs/atoms.h"
 #include "gjs/context-private.h"
 #include "gjs/engine.h"
@@ -317,8 +315,6 @@ class GjsInternalGlobal : GjsBaseGlobal {
     static bool define_properties(JSContext* cx, JS::HandleObject global,
                                   const char* realm_name,
                                   const char* bootstrap_script G_GNUC_UNUSED) {
-        const GjsAtoms& atoms = GjsContextPrivate::atoms(cx);
-
         JS::Realm* realm = JS::GetObjectRealmOrNull(global);
         g_assert(realm && "Global object must be associated with a realm");
         // const_cast is allowed here if we never free the realm data
@@ -338,52 +334,8 @@ class GjsInternalGlobal : GjsBaseGlobal {
 
         gjs_set_global_slot(global, GjsGlobalSlot::MODULE_REGISTRY,
                             JS::ObjectValue(*module_registry));
-        if (!JS_DefineFunctions(cx, global, static_funcs))
-            return false;
 
-        // GI Modules
-
-        GError* error = nullptr;
-        if (!g_irepository_require(nullptr, "GObject", "2.0",
-                                   GIRepositoryLoadFlags(0), &error) ||
-            !g_irepository_require(nullptr, "GLib", "2.0",
-                                   GIRepositoryLoadFlags(0), &error) ||
-            !g_irepository_require(nullptr, "Gio", "2.0",
-                                   GIRepositoryLoadFlags(0), &error)) {
-            gjs_throw_gerror_message(cx, error);
-            g_error_free(error);
-            return false;
-        }
-
-        JS::RootedObject gobject(cx, gjs_create_ns(cx, "GObject"));
-        JS::RootedObject glib(cx, gjs_create_ns(cx, "GLib"));
-        JS::RootedObject gio(cx, gjs_create_ns(cx, "Gio"));
-        JS::RootedObject privateNS(cx, JS_NewPlainObject(cx));
-
-        if (!gjs_global_registry_set(cx, native_registry,
-                                     atoms.private_ns_marker(), privateNS) ||
-            !gjs_global_registry_set(cx, native_registry, atoms.gobject(),
-                                     gobject) ||
-            !gjs_global_registry_set(cx, native_registry, atoms.glib(), glib) ||
-            !gjs_global_registry_set(cx, native_registry, atoms.gio(), gio) ||
-            !JS_DefinePropertyById(cx, global, atoms.glib(), glib,
-                                   JSPROP_PERMANENT) ||
-            !JS_DefinePropertyById(cx, global, atoms.gio(), gio,
-                                   JSPROP_PERMANENT) ||
-            !JS_DefinePropertyById(cx, global, atoms.gobject(), gobject,
-                                   JSPROP_PERMANENT)) {
-            return false;
-        }
-
-        // Native Modules
-
-        JS::RootedObject byteArray(cx, JS_NewPlainObject(cx));
-        if (!gjs_load_native_module(cx, "_byteArrayNative", &byteArray) ||
-            !JS_DefineProperty(cx, global, "ByteUtils", byteArray,
-                               JSPROP_PERMANENT))
-            return false;
-
-        return true;
+        return JS_DefineFunctions(cx, global, static_funcs);
     }
 };
 
