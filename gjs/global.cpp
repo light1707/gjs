@@ -373,12 +373,9 @@ class GjsInternalGlobal : GjsBaseGlobal {
         // Native Modules
 
         JS::RootedObject byteArray(cx, JS_NewPlainObject(cx));
-        JS::RootedObject io(cx, JS_NewPlainObject(cx));
         if (!gjs_load_native_module(cx, "_byteArrayNative", &byteArray) ||
-            !gjs_load_native_module(cx, "_print", &io) ||
             !JS_DefineProperty(cx, global, "ByteUtils", byteArray,
-                               JSPROP_PERMANENT) ||
-            !JS_DefineProperty(cx, global, "IO", io, JSPROP_PERMANENT))
+                               JSPROP_PERMANENT))
             return false;
 
         return true;

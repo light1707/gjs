@@ -37,13 +37,13 @@ enum class GjsDebuggerGlobalSlot : uint32_t {
 
 enum class GjsGlobalSlot : uint32_t {
     IMPORTS = static_cast<uint32_t>(GjsBaseGlobalSlot::LAST),
-    // Stores the import resolution hook
+    // Stores a function which resolves imports
     IMPORT_HOOK,
-    // Stores the module creation hook
+    // Stores a function which creates new module objects
     MODULE_HOOK,
-    // Stores the metadata population hook
+    // Stores a function which sets the metadata on import.meta
     META_HOOK,
-    // Stores the module registry
+    // Stores the module registry (a Map object)
     MODULE_REGISTRY,
     NATIVE_REGISTRY,
     PROTOTYPE_gtype,

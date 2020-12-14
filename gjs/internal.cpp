@@ -31,6 +31,7 @@
 #include <string>   // for u16string
 #include <vector>
 
+#include "gjs/byteArray.h"
 #include "gjs/context-private.h"
 #include "gjs/context.h"
 #include "gjs/engine.h"
@@ -45,6 +46,8 @@
 #include "util/log.h"
 
 #include "gi/repo.h"
+
+using GjsAutoFile = GjsAutoUnref<GFile>;
 
 // NOTE: You have to be very careful in this file to only do operations within
 // the correct global!
@@ -98,7 +101,6 @@ bool gjs_load_internal_module(JSContext* cx, const char* identifier) {
 
     if (!gjs_global_registry_set(cx, registry, key, module) ||
         !JS::ModuleInstantiate(cx, module) || !JS::ModuleEvaluate(cx, module)) {
-        gjs_log_exception(cx);
         return false;
     }
 
@@ -110,20 +112,17 @@ bool gjs_load_internal_module(JSContext* cx, const char* identifier) {
  *
  * Asserts: (arg0: object, arg1: Function) => void
  */
-static bool set_module_hook(JSContext* cx, JS::CallArgs args,
-                            GjsGlobalSlot slot) {
-    JS::RootedValue v_global(cx, args[0]);
-    JS::RootedValue v_hook(cx, args[1]);
+static void set_module_hook(JS::CallArgs args, GjsGlobalSlot slot) {
+    JS::Value v_global = args[0];
+    JS::Value v_hook = args[1];
 
     g_assert(v_global.isObject());
     g_assert(v_hook.isObject());
 
-    JS::RootedObject hook(cx, &v_hook.toObject());
-    g_assert(JS::IsCallable(hook));
+    g_assert(JS::IsCallable(&v_hook.toObject()));
     gjs_set_global_slot(&v_global.toObject(), slot, v_hook);
 
     args.rval().setUndefined();
-    return true;
 }
 
 /**
@@ -139,15 +138,15 @@ static bool set_module_hook(JSContext* cx, JS::CallArgs args,
  *   uri // the URI to load from
  * });
  *
- * @returns whether an error occurred while setting the module hook.
+ * @returns guaranteed to return true or assert.
  */
-bool gjs_internal_global_set_module_hook(JSContext* cx, unsigned argc,
-                                         JS::Value* vp) {
-    JS::CallArgs args = CallArgsFromVp(argc, vp);
-    if (!args.requireAtLeast(cx, "setModuleLoadHook", 2))
-        return false;
+bool gjs_internal_global_set_module_hook([[maybe_unused]] JSContext* cx,
+                                         unsigned argc, JS::Value* vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    g_assert(args.length() == 2 && "setModuleLoadHook takes 2 arguments");
 
-    return set_module_hook(cx, args, GjsGlobalSlot::MODULE_HOOK);
+    set_module_hook(args, GjsGlobalSlot::MODULE_HOOK);
+    return true;
 }
 
 /**
@@ -163,15 +162,15 @@ bool gjs_internal_global_set_module_hook(JSContext* cx, unsigned argc,
  *   specifier // the import specifier
  * });
  *
- * @returns whether an error occurred while setting the import hook.
+ * @returns guaranteed to return true or assert.
  */
-bool gjs_internal_global_set_module_resolve_hook(JSContext* cx, unsigned argc,
-                                                 JS::Value* vp) {
-    JS::CallArgs args = CallArgsFromVp(argc, vp);
-    if (!args.requireAtLeast(cx, "setModuleResolveHook", 2))
-        return false;
+bool gjs_internal_global_set_module_resolve_hook([[maybe_unused]] JSContext* cx,
+                                                 unsigned argc, JS::Value* vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    g_assert(args.length() == 2 && "setModuleResolveHook takes 2 arguments");
 
-    return set_module_hook(cx, args, GjsGlobalSlot::IMPORT_HOOK);
+    set_module_hook(args, GjsGlobalSlot::IMPORT_HOOK);
+    return true;
 }
 
 /**
@@ -190,15 +189,15 @@ bool gjs_internal_global_set_module_resolve_hook(JSContext* cx, unsigned argc,
  *   meta // the meta object
  * });
  *
- * @returns whether an error occurred while setting the meta hook.
+ * @returns guaranteed to return true or assert.
  */
-bool gjs_internal_global_set_module_meta_hook(JSContext* cx, unsigned argc,
-                                              JS::Value* vp) {
-    JS::CallArgs args = CallArgsFromVp(argc, vp);
-    if (!args.requireAtLeast(cx, "setModuleMetaHook", 2))
-        return false;
+bool gjs_internal_global_set_module_meta_hook([[maybe_unused]] JSContext* cx,
+                                              unsigned argc, JS::Value* vp) {
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    g_assert(args.length() == 2 && "setModuleMetaHook takes 2 arguments");
 
-    return set_module_hook(cx, args, GjsGlobalSlot::META_HOOK);
+    set_module_hook(args, GjsGlobalSlot::META_HOOK);
+    return true;
 }
 
 /**
@@ -259,15 +258,11 @@ static bool compile_module(JSContext* cx, JS::CallArgs args) {
  */
 bool gjs_internal_compile_internal_module(JSContext* cx, unsigned argc,
                                           JS::Value* vp) {
-    JS::CallArgs args = CallArgsFromVp(argc, vp);
-
-    if (!args.requireAtLeast(cx, "compileInternalModule", 2)) {
-        return false;
-    }
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    g_assert(args.length() == 2 && "compileInternalModule takes 2 arguments");
 
     JS::RootedObject global(cx, gjs_get_internal_global(cx));
     JSAutoRealm ar(cx, global);
-
     return compile_module(cx, args);
 }
 
@@ -286,13 +281,11 @@ bool gjs_internal_compile_internal_module(JSContext* cx, unsigned argc,
  * @returns whether an error occurred while compiling the module.
  */
 bool gjs_internal_compile_module(JSContext* cx, unsigned argc, JS::Value* vp) {
-    JS::CallArgs args = CallArgsFromVp(argc, vp);
-    if (!args.requireAtLeast(cx, "compileModule", 2))
-        return false;
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    g_assert(args.length() == 2 && "compileModule takes 2 arguments");
 
     JS::RootedObject global(cx, gjs_get_import_global(cx));
     JSAutoRealm ar(cx, global);
-
     return compile_module(cx, args);
 }
 
@@ -310,10 +303,8 @@ bool gjs_internal_compile_module(JSContext* cx, unsigned argc, JS::Value* vp) {
  */
 bool gjs_internal_set_module_private(JSContext* cx, unsigned argc,
                                      JS::Value* vp) {
-    JS::CallArgs args = CallArgsFromVp(argc, vp);
-    if (!args.requireAtLeast(cx, "setModulePrivate", 2))
-        return false;
-
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    g_assert(args.length() == 2 && "setModulePrivate takes 2 arguments");
     g_assert(args[0].isObject());
     g_assert(args[1].isObject());
 
@@ -389,9 +380,9 @@ bool gjs_internal_global_import_sync(JSContext* cx, unsigned argc,
  */
 bool gjs_internal_global_get_registry(JSContext* cx, unsigned argc,
                                       JS::Value* vp) {
-    JS::CallArgs args = CallArgsFromVp(argc, vp);
-    if (!args.requireAtLeast(cx, "getRegistry", 1))
-        return false;
+    JS::CallArgs args = JS::CallArgsFromVp(argc, vp);
+    g_assert(args.length() == 1 && "getRegistry takes 1 arguments");
+    g_assert(args[0].isObject());
 
     JS::RootedObject global(cx, &args[0].toObject());
     JSAutoRealm ar(cx, global);
