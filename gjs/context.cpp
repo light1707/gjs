@@ -1008,20 +1008,59 @@ bool gjs_context_register_module(GjsContext* js_context, const char* identifier,
     return gjs->register_module(identifier, filename, error);
 }
 
-bool GjsContextPrivate::eval(const char* script, ssize_t script_len,
-                             const char* filename, int* exit_status_p,
-                             GError** error) {
-    AutoResetExit reset(this);
-
+bool GjsContextPrivate::auto_profile_enter() {
     bool auto_profile = m_should_profile;
     if (auto_profile &&
         (_gjs_profiler_is_running(m_profiler) || m_should_listen_sigusr2))
         auto_profile = false;
 
     JSAutoRealm ar(m_cx, m_global);
-
     if (auto_profile)
         gjs_profiler_start(m_profiler);
+
+    return auto_profile;
+}
+
+void GjsContextPrivate::auto_profile_exit(bool auto_profile) {
+    if (auto_profile)
+        gjs_profiler_stop(m_profiler);
+}
+
+uint8_t GjsContextPrivate::handle_exit_code(const char* type,
+                                            const char* identifier,
+                                            GError** error) {
+    uint8_t code;
+    if (should_exit(&code)) {
+        /* exit_status_p is public API so can't be changed, but should be
+         * uint8_t, not int */
+        g_set_error(error, GJS_ERROR, GJS_ERROR_SYSTEM_EXIT,
+                    "Exit with code %d", code);
+        return code;  // Don't log anything
+    }
+    if (!JS_IsExceptionPending(m_cx)) {
+        g_critical("%s %s terminated with an uncatchable exception", type,
+                   identifier);
+        g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
+                    "%s %s terminated with an uncatchable exception", type,
+                    identifier);
+    } else {
+        g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
+                    "%s %s threw an exception", type, identifier);
+    }
+
+    gjs_log_exception_uncaught(m_cx);
+    /* No exit code from script, but we don't want to exit(0) */
+    return 1;
+}
+
+bool GjsContextPrivate::eval(const char* script, ssize_t script_len,
+                             const char* filename, int* exit_status_p,
+                             GError** error) {
+    AutoResetExit reset(this);
+
+    bool auto_profile = auto_profile_enter();
+
+    JSAutoRealm ar(m_cx, m_global);
 
     JS::RootedValue retval(m_cx);
     bool ok = eval_with_scope(nullptr, script, script_len, filename, &retval);
@@ -1034,34 +1073,10 @@ bool GjsContextPrivate::eval(const char* script, ssize_t script_len,
         ok = run_jobs_fallible() && ok;
     }
 
-    if (auto_profile)
-        gjs_profiler_stop(m_profiler);
+    auto_profile_exit(auto_profile);
 
     if (!ok) {
-        uint8_t code;
-        if (should_exit(&code)) {
-            /* exit_status_p is public API so can't be changed, but should be
-             * uint8_t, not int */
-            *exit_status_p = code;
-            g_set_error(error, GJS_ERROR, GJS_ERROR_SYSTEM_EXIT,
-                        "Exit with code %d", code);
-            return false;  // Don't log anything
-        }
-
-        if (!JS_IsExceptionPending(m_cx)) {
-            g_critical("Script %s terminated with an uncatchable exception",
-                       filename);
-            g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
-                        "Script %s terminated with an uncatchable exception",
-                        filename);
-        } else {
-            g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
-                        "Script %s threw an exception", filename);
-        }
-
-        gjs_log_exception_uncaught(m_cx);
-        /* No exit code from script, but we don't want to exit(0) */
-        *exit_status_p = 1;
+        *exit_status_p = handle_exit_code("Script", filename, error);
         return false;
     }
 
@@ -1082,14 +1097,9 @@ bool GjsContextPrivate::eval(const char* script, ssize_t script_len,
 
 bool GjsContextPrivate::eval_module(const char* identifier,
                                     uint8_t* exit_status_p, GError** error) {
-    bool auto_profile = m_should_profile;
+    AutoResetExit reset(this);
 
-    if (auto_profile &&
-        (_gjs_profiler_is_running(m_profiler) || m_should_listen_sigusr2))
-        auto_profile = false;
-
-    if (auto_profile)
-        gjs_profiler_start(m_profiler);
+    bool auto_profile = auto_profile_enter();
 
     JSAutoRealm ac(m_cx, m_global);
 
@@ -1098,31 +1108,21 @@ bool GjsContextPrivate::eval_module(const char* identifier,
     JS::RootedObject obj(m_cx);
     if (!gjs_global_registry_get(m_cx, registry, key, &obj) || !obj) {
         g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
-                    "Cannot find module with identifier %s.", identifier);
+                    "Cannot find module with identifier: '%s'", identifier);
         return false;
     }
-
-    bool ok = true;
 
     if (!JS::ModuleInstantiate(m_cx, obj)) {
         gjs_log_exception(m_cx);
         g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
-                    "Failed to instantiate module %s.", identifier);
+                    "Failed to resolve imports for module: '%s'", identifier);
 
         return false;
     }
 
+    bool ok = true;
     if (!JS::ModuleEvaluate(m_cx, obj))
         ok = false;
-
-    schedule_gc_if_needed();
-
-    if (JS_IsExceptionPending(m_cx)) {
-        gjs_log_exception(m_cx);
-        g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
-                    "Uncaught exception in %s.", identifier);
-        return false;
-    }
 
     /* The promise job queue should be drained even on error, to finish
      * outstanding async tasks before the context is torn down. Drain after
@@ -1133,82 +1133,40 @@ bool GjsContextPrivate::eval_module(const char* identifier,
         ok = run_jobs_fallible() && ok;
     }
 
-    if (auto_profile)
-        gjs_profiler_stop(m_profiler);
+    auto_profile_exit(auto_profile);
 
     if (!ok) {
-        uint8_t code;
-
-        if (should_exit(&code)) {
-            *exit_status_p = code;
-            g_set_error(error, GJS_ERROR, GJS_ERROR_SYSTEM_EXIT,
-                        "Exit with code %d", code);
-            return false;
-        }
-
-        if (!JS_IsExceptionPending(m_cx)) {
-            g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
-                        "Module %s terminated with an uncatchable exception",
-                        identifier);
-        } else {
-            g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
-                        "Module %s threw an exception", identifier);
-        }
-
-        gjs_log_exception(m_cx);
-        /* No exit code from script, but we don't want to exit(0) */
-        *exit_status_p = 1;
+        *exit_status_p = handle_exit_code("Module", identifier, error);
         return false;
     }
 
-    if (exit_status_p) {
-        /* Assume success if no integer was returned */
-        *exit_status_p = 0;
-    }
-
+    /* Assume success if no errors were thrown or exit code set. */
+    *exit_status_p = 0;
     return true;
 }
 
 bool GjsContextPrivate::register_module(const char* identifier,
                                         const char* file_uri, GError** error) {
-    JSAutoRealm ac(m_cx, m_global);
-
-    // Module registration uses exceptions to report errors
-    // so we'll store the exception state, clear it, attempt to load the
-    // module, then restore the original exception state.
-    JS::AutoSaveExceptionState exp_state(m_cx);
+    JSAutoRealm ar(m_cx, m_global);
 
     JS::RootedObject module(m_cx, gjs_module_load(m_cx, identifier, file_uri));
     if (module)
         return true;
 
-    // Our message could come from memory owned by us or by the runtime.
-    const char* msg = nullptr;
-
-    JS::RootedValue exc(m_cx);
-    if (JS_GetPendingException(m_cx, &exc)) {
-        JS::RootedObject exc_obj(m_cx, &exc.toObject());
-        JSErrorReport* report = JS_ErrorFromException(m_cx, exc_obj);
-        if (report) {
-            msg = report->message().c_str();
-        } else {
-            JS::RootedString js_message(m_cx, JS::ToString(m_cx, exc));
-
-            if (js_message) {
-                JS::UniqueChars cstr(JS_EncodeStringToUTF8(m_cx, js_message));
-                msg = cstr.get();
-            }
-        }
+    const char* msg = "unknown";
+    JS::ExceptionStack exn_stack(m_cx);
+    JS::ErrorReportBuilder builder(m_cx);
+    if (JS::StealPendingExceptionStack(m_cx, &exn_stack) &&
+        builder.init(m_cx, exn_stack,
+                     JS::ErrorReportBuilder::WithSideEffects)) {
+        msg = builder.toStringResult().c_str();
+    } else {
+        JS_ClearPendingException(m_cx);
     }
 
     g_set_error(error, GJS_ERROR, GJS_ERROR_FAILED,
-                "Error registering module '%s': %s", identifier,
+                "Failed to parse module '%s': %s", identifier,
                 msg ? msg : "unknown");
-
-    // We've successfully handled the exception so we can clear it.
-    // This is necessary because AutoSaveExceptionState doesn't erase
-    // exceptions when it restores the previous exception state.
-    JS_ClearPendingException(m_cx);
 
     return false;
 }
@@ -1235,10 +1193,10 @@ gjs_context_eval_file(GjsContext    *js_context,
 bool gjs_context_eval_module_file(GjsContext* js_context, const char* filename,
                                   uint8_t* exit_status_p, GError** error) {
     GjsAutoUnref<GFile> file = g_file_new_for_commandline_arg(filename);
-    GjsAutoChar fileuri = g_file_get_uri(file);
+    GjsAutoChar uri = g_file_get_uri(file);
 
-    return gjs_context_register_module(js_context, fileuri, fileuri, error) &&
-           gjs_context_eval_module(js_context, fileuri, exit_status_p, error);
+    return gjs_context_register_module(js_context, uri, uri, error) &&
+           gjs_context_eval_module(js_context, uri, exit_status_p, error);
 }
 
 /*

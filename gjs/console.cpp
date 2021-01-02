@@ -179,7 +179,7 @@ int define_argv_and_eval_script(GjsContext* js_context, int argc,
     int code;
     if (exec_as_module) {
         GjsAutoUnref<GFile> output = g_file_new_for_commandline_arg(filename);
-        char* uri = g_file_get_uri(output);
+        GjsAutoChar uri = g_file_get_uri(output);
         if (!gjs_context_register_module(js_context, uri, uri, &error)) {
             g_printerr("%s\n", error->message);
             code = 1;
