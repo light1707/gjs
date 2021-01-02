@@ -14,3 +14,19 @@ export let {
     dpgettext,
     domain,
 } = imports._gettext;
+
+let _ = {
+    setlocale,
+    textdomain,
+    bindtextdomain,
+    gettext,
+    dgettext,
+    dcgettext,
+    ngettext,
+    dngettext,
+    pgettext,
+    dpgettext,
+    domain,
+};
+
+export default _;

@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT OR LGPL-2.0-or-later
 // SPDX-FileCopyrightText: 2020 Evan Welsh <contact@evanwelsh.com>
 
-export const {vprintf} = imports._format;
+const { vprintf } = imports._format;
 
 /**
- * @param {any[]} args FIXME
+ * @param {string} str the string to format (e.g. '%s is blue')
+ * @param {any...} args the arguments to replace placeholders with
  */
-export function format(...args) {
-    // eslint-disable-next-line no-invalid-this
-    return vprintf(this, args);
+export function sprintf(str, ...args) {
+    return vprintf(str, args);
 }
+
+export let _ = {
+    sprintf,
+};
+
+export default _;

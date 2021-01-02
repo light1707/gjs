@@ -290,13 +290,13 @@ main(int argc, char **argv)
         program_name = gjs_argv[0];
     } else if (gjs_argc == 1) {
         if (exec_as_module) {
-            script = g_strdup(
-                "throw new Error('Console interaction is not implemented with "
-                "the --module option. Exiting with error.')");
-        } else {
-            script = g_strdup(
-                "const Console = imports.console; Console.interact();");
+            g_warning(
+                "'-m' requires a file argument.\nExample: gjs -m main.js");
+            exit(1);
         }
+
+        script =
+            g_strdup("const Console = imports.console; Console.interact();");
         len = strlen(script);
         filename = "<stdin>";
         program_name = gjs_argv[0];

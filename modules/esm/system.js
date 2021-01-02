@@ -3,8 +3,6 @@
 
 const system = import.meta.importSync('system');
 
-export default system;
-
 export let {
     addressOf,
     refcount,
@@ -15,3 +13,16 @@ export let {
     programInvocationName,
     clearDateCaches,
 } = system;
+
+let _ = {
+    addressOf,
+    refcount,
+    breakpoint,
+    gc,
+    exit,
+    version,
+    programInvocationName,
+    clearDateCaches,
+};
+
+export default _;

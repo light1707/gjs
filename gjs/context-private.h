@@ -204,9 +204,8 @@ class GjsContextPrivate : public JS::JobQueue {
     bool eval_with_scope(JS::HandleObject scope_object, const char* script,
                          ssize_t script_len, const char* filename,
                          JS::MutableHandleValue retval);
-    GJS_JSAPI_RETURN_CONVENTION
-    bool eval_module(const char* identifier, uint8_t* exit_code_p,
-                     GError** error);
+    [[nodiscard]] bool eval_module(const char* identifier, uint8_t* exit_code_p,
+                                   GError** error);
     GJS_JSAPI_RETURN_CONVENTION
     bool call_function(JS::HandleObject this_obj, JS::HandleValue func_val,
                        const JS::HandleValueArray& args,
