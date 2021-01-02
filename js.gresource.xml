@@ -3,11 +3,11 @@
 <!-- SPDX-FileCopyrightText: 2014 Red Hat, Inc. -->
 <gresources>
   <gresource prefix="/org/gnome/gjs">
-    <!-- Internal scripts -->
-    <file>lib/bootstrap/module.js</file>
-    <file>lib/modules/esm.js</file>
-    <file>lib/modules/gi.js</file>
-    <file>lib/entry.js</file>
+    <!-- Internal modules -->
+    <file>modules/internal/bootstrap/module.js</file>
+    <file>modules/internal/modules/esm.js</file>
+    <file>modules/internal/modules/gi.js</file>
+    <file>modules/internal/entry.js</file>
 
     <!-- ESM-based modules -->
     <file>modules/esm/cairo.js</file>

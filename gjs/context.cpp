@@ -562,8 +562,9 @@ GjsContextPrivate::GjsContextPrivate(JSContext* cx, GjsContext* public_context)
     }
 
     JS::RootedObject entry(
-        cx, gjs_module_load(cx, "resource:///org/gnome/gjs/lib/entry.js",
-                            "resource:///org/gnome/gjs/lib/entry.js"));
+        cx, gjs_module_load(
+                cx, "resource:///org/gnome/gjs/modules/internal/entry.js",
+                "resource:///org/gnome/gjs/modules/internal/entry.js"));
 
     if (!entry) {
         gjs_log_exception(cx);

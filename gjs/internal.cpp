@@ -56,9 +56,9 @@ using GjsAutoFile = GjsAutoUnref<GFile>;
  * gjs_load_internal_module:
  *
  * @brief Loads a module source from an internal resource,
- * resource:///org/gnome/gjs/lib/{#identifier}.js, registers it in the internal
- * global's module registry, and proceeds to compile, initialize, and evaluate
- * the module.
+ * resource:///org/gnome/gjs/modules/internal/{#identifier}.js, registers it in
+ * the internal global's module registry, and proceeds to compile, initialize,
+ * and evaluate the module.
  *
  * @param cx the current JSContext
  * @param identifier the identifier of the internal module
@@ -66,8 +66,8 @@ using GjsAutoFile = GjsAutoUnref<GFile>;
  * @returns whether an error occurred while loading or evaluating the module.
  */
 bool gjs_load_internal_module(JSContext* cx, const char* identifier) {
-    GjsAutoChar full_path(
-        g_strdup_printf("resource:///org/gnome/gjs/lib/%s.js", identifier));
+    GjsAutoChar full_path(g_strdup_printf(
+        "resource:///org/gnome/gjs/modules/internal/%s.js", identifier));
 
     char* script;
     size_t script_len;
