@@ -538,6 +538,5 @@ decltype(
     GjsDebuggerGlobal::static_funcs) constexpr GjsDebuggerGlobal::static_funcs;
 
 decltype(GjsInternalGlobal::klass) constexpr GjsInternalGlobal::klass;
-decltype(GjsInternalGlobal::classops) constexpr GjsInternalGlobal::classops;
 decltype(
     GjsInternalGlobal::static_funcs) constexpr GjsInternalGlobal::static_funcs;

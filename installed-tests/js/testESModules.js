@@ -23,4 +23,8 @@ describe('ES module imports', function () {
     it('GObject introspection import', function () {
         expect(gi.require('GObject').toString()).toEqual('[object GIRepositoryNamespace]');
     });
+
+    it('import.meta.url', function () {
+        expect(import.meta.url).toMatch(/\/installed-tests\/js\/testESModules\.js$/);
+    });
 });
