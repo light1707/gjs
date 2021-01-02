@@ -283,23 +283,11 @@ class GjsInternalGlobal : GjsBaseGlobal {
         JS_FN("uriExists", gjs_internal_uri_exists, 1, 0),
         JS_FS_END};
 
-    static constexpr JSClassOps classops = {nullptr,  // addProperty
-                                            nullptr,  // deleteProperty
-                                            nullptr,  // enumerate
-                                            JS_NewEnumerateStandardClasses,
-                                            JS_ResolveStandardClass,
-                                            JS_MayResolveStandardClass,
-                                            nullptr,  // finalize
-                                            nullptr,  // call
-                                            nullptr,  // hasInstance
-                                            nullptr,  // construct
-                                            JS_GlobalObjectTraceHook};
-
     static constexpr JSClass klass = {
         "GjsInternalGlobal",
         JSCLASS_GLOBAL_FLAGS_WITH_SLOTS(
             static_cast<uint32_t>(GjsInternalGlobalSlot::LAST)),
-        &classops,
+        &defaultclassops,
     };
 
  public:
