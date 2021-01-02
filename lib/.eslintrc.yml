@@ -15,13 +15,12 @@ globals:
   logError: off
   print: off
   printerr: off
-  Gio: readonly
-  ByteUtils: readonly
   moduleGlobalThis: readonly
   compileModule: readonly
   compileInternalModule: readonly
   loadResourceOrFile: readonly
   parseURI: readonly
+  uriExists: readonly
   resolveRelativeResourceOrFile: readonly
   setModuleResolveHook: readonly
   setModuleMetaHook: readonly
